@@ -23,6 +23,12 @@
   #capa button:focus{border-color:#ffd100;outline:none;background:#2a57c4}
   #cargando,#msg{display:none;position:fixed;top:0;left:0;right:0;bottom:0;align-items:center;justify-content:center;
        text-align:center;font-size:28px;padding:20px;line-height:1.5}
+  #btnMenu{display:none;position:fixed;top:20px;right:20px;z-index:10;font-size:24px;padding:14px 22px;
+        border-radius:10px;border:4px solid transparent;background:rgba(28,63,143,.9);color:#fff;cursor:pointer}
+  #btnMenu:focus,#btnMenu:hover{border-color:#ffd100;outline:none}
+  body.play #btnMenu{display:block}
+  body.play.quieto #btnMenu{display:none}
+  #capa{z-index:11}
   #aviso{display:none;position:fixed;top:30px;left:50%;transform:translateX(-50%);
         background:rgba(0,0,0,.75);padding:12px 22px;border-radius:8px;font-size:22px}
 
@@ -97,8 +103,10 @@
   <p id="capaNombre"></p>
   <button id="btnCambiar">Cambiar pantalla</button>
   <button id="btnSeguir">Seguir viendo</button>
+  <p style="font-size:16px;color:#aaa;margin:14px 0 0">Tecla 0 del control: volver al menú</p>
 </div>
 <div id="aviso">Apretá OK en el control para pantalla completa</div>
+<button id="btnMenu">☰ Menú</button>
 
 <video id="v" autoplay muted playsinline></video>
 <div id="msg"></div>
@@ -125,7 +133,7 @@
   <p class="nota">Cada TV pasa sus videos en orden (1, 2, 3, 4) y vuelve a empezar. Los lugares vacíos se saltean.
      Después de subir o borrar, las TV se actualizan solas en unos minutos.</p>
   <p><a href="./?menu">Volver al menú de pantallas</a></p>
-  <p class="version">Versión 14</p>
+  <p class="version">Versión 15</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -135,7 +143,7 @@
     var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes' };
     var $ = function(id){ return document.getElementById(id); };
     var v = $('v'), menu = $('menu'), capa = $('capa'), aviso = $('aviso'), msg = $('msg'), cargando = $('cargando');
-    var actual = null, versionActual = null, intervalo = null, timerCapa = null;
+    var actual = null, versionActual = null, intervalo = null, timerCapa = null, timerCursor = null;
     var lista = [], indice = 0, errores = 0, turno = 0, actualizando = false, xhrs = [];
     var puedeBlob = !!(window.URL && URL.createObjectURL && window.Blob);
 
@@ -256,6 +264,8 @@
       menu.style.display = 'none';
       msg.style.display = 'none';
       document.body.className = 'play';
+      clearTimeout(timerCursor);
+      timerCursor = setTimeout(function(){ if (actual) document.body.className = 'play quieto'; }, 6000);
       v.style.display = 'block';
       cargando.innerHTML = 'Cargando ' + nombres[clave] + '…';
       cargando.style.display = 'flex';
@@ -328,17 +338,17 @@
     }
 
     $('btnCambiar').onclick = function(e){ if (e) e.stopPropagation(); mostrarMenu(); };
-    $('btnSeguir').onclick = function(e){ if (e) e.stopPropagation(); ocultarCapa(); pantallaCompleta(); };
+    $('btnMenu').onclick = function(e){ if (e) e.stopPropagation(); mostrarMenu(); };
+    $('btnSeguir').onclick = function(e){ if (e) e.stopPropagation(); ocultarCapa(); v.muted = false; play(); pantallaCompleta(); };
 
     document.body.onclick = function(e){
       if (!actual) return;
-      if (capa.contains(e.target)) return;
+      if (capa.contains(e.target) || e.target === $('btnMenu')) return;
       v.muted = false; play(); pantallaCompleta();
       mostrarCapa();
     };
 
     // El puntero del control se ve al moverlo y se esconde a los 3 segundos quieto
-    var timerCursor = null;
     document.onmousemove = function(){
       if (!actual) return;
       document.body.className = 'play';
@@ -355,6 +365,10 @@
         if (capaVisible()) ocultarCapa(); else mostrarCapa();
         return false;
       }
+      if (k == 48 || k == 96) { // tecla 0: directo al menú
+        if (e.preventDefault) e.preventDefault();
+        mostrarMenu(); return false;
+      }
       if (k >= 37 && k <= 40) {
         if (e.preventDefault) e.preventDefault();
         if (!capaVisible()) { mostrarCapa(); return false; }
@@ -362,7 +376,15 @@
         if (document.activeElement === $('btnSeguir')) $('btnCambiar').focus(); else $('btnSeguir').focus();
         return false;
       }
-      if (k == 13 && !capaVisible()) { v.muted = false; play(); pantallaCompleta(); }
+      if (k == 13) {
+        if (e.preventDefault) e.preventDefault();
+        if (!capaVisible()) { mostrarCapa(); return false; }
+        var b = document.activeElement;
+        if (b === $('btnCambiar') || b === $('btnSeguir')) b.click(); else $('btnSeguir').click();
+        return false;
+      }
+      // cualquier otro botón del control también muestra el cartel
+      if (!capaVisible()) mostrarCapa();
     };
 
     var m = q.match(/[?&]v=([a-z0-9]+)/);
