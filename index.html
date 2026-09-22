@@ -13,6 +13,8 @@
   #menu a:focus,#menu a:hover{border-color:#ffd100;outline:none;background:#2a57c4}
   #menu a.chico{width:auto;padding:10px 18px;font-size:18px;background:transparent;color:#aaa}
   #v{display:none;width:100%;height:100%;object-fit:contain}
+  #yt{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000}
+  #yt iframe{width:100%;height:100%;border:0;pointer-events:none}
   body.quieto{cursor:none}
   #capa{display:none;position:fixed;left:50%;bottom:40px;transform:translateX(-50%);
         background:rgba(0,0,0,.85);border:2px solid #444;border-radius:12px;padding:20px 26px;
@@ -62,6 +64,9 @@
   .slot .info{font-size:13px;color:#333;line-height:1.4;word-break:break-word;min-height:18px}
   .slot .info small{color:#777}
   .slot input[type=file]{font-size:12px;width:100%}
+  .slot .previa{width:100%;aspect-ratio:16/9;background:#000;border-radius:6px;overflow:hidden}
+  .slot .previa iframe{width:100%;height:100%;border:0}
+  .slot.vacio .previa{display:none}
   .slot .link{width:100%;box-sizing:border-box;padding:8px;font-size:12px;border:1px solid #bbb;border-radius:6px}
   .slot .quitar{background:#c62828}
   .slot.vacio .quitar{display:none}
@@ -110,6 +115,7 @@
 <button id="btnMenu">☰ Menú</button>
 
 <video id="v" autoplay muted playsinline></video>
+<div id="yt"><div id="ytPlayer"></div></div>
 <div id="msg"></div>
 <div id="cargando"></div>
 
@@ -118,8 +124,8 @@
   <div class="caja">
     <h2>Cómo funciona</h2>
     <p class="nota" style="margin:0;font-size:14px;line-height:1.6">
-      Pegá en cada casillero el link de Google Drive del video (tiene que estar compartido como
-      <b>"Cualquier persona con el enlace"</b>). Cada TV pasa sus videos en orden (1, 2, 3, 4) y vuelve a empezar;
+      Pegá en cada casillero el link de YouTube del video (conviene subirlo como <b>"No listado"</b>,
+      así solo lo ve quien tiene el link). Cada TV pasa sus videos en orden (1, 2, 3, 4) y vuelve a empezar;
       los casilleros vacíos se saltean. Cuando termines, tocá <b>Descargar lista</b> y subí ese archivo a GitHub.</p>
   </div>
   <div id="tvs"></div>
@@ -135,7 +141,7 @@
     </ol>
   </div>
   <p><a href="./?menu">Volver al menú de pantallas</a></p>
-  <p class="version">Versión 16</p>
+  <p class="version">Versión 17</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -212,7 +218,7 @@
 
     function sinVideo(){
       v.pause(); v.removeAttribute('src'); try{ v.load(); }catch(e){}
-      msg.innerHTML = 'No hay videos cargados para <b>' + nombres[actual] + '</b><br>Subilos desde Configuración<br><br><small>Apretá atrás en el control para cambiar de pantalla</small>';
+      msg.innerHTML = 'No hay videos cargados para <b>' + nombres[actual] + '</b><br>Cargalos desde Configuración<br><br><small>Tecla 0 del control: volver al menú</small>';
       msg.style.display = 'flex';
     }
     function ponerLista(nueva){
@@ -233,6 +239,75 @@
       play();
     }
 
+    // ---- YouTube ----
+    var yt = null, ytListo = false, ytIds = [], ytIdx = 0, ytErrores = 0, modoYT = false, conSonido = false, esperandoAPI = [];
+    function cargarAPI(cb){
+      if (window.YT && YT.Player) { cb(); return; }
+      esperandoAPI.push(cb);
+      if (esperandoAPI.length > 1) return;
+      window.onYouTubeIframeAPIReady = function(){ var l = esperandoAPI; esperandoAPI = []; for (var i = 0; i < l.length; i++) l[i](); };
+      var sc = document.createElement('script');
+      sc.src = 'https://www.youtube.com/iframe_api';
+      document.getElementsByTagName('head')[0].appendChild(sc);
+    }
+    function cargarYT(id){
+      if (!yt) return;
+      try { yt.loadVideoById(id); if (conSonido) yt.unMute(); else yt.mute(); } catch(e){}
+    }
+    function siguienteYT(){
+      if (!ytIds.length) return;
+      ytIdx = (ytIdx + 1) % ytIds.length;
+      cargarYT(ytIds[ytIdx]);
+    }
+    function ponerYT(ids){
+      modoYT = true;
+      ytIds = ids; ytIdx = 0; ytErrores = 0;
+      v.pause(); v.removeAttribute('src'); try{ v.load(); }catch(e){}
+      v.style.display = 'none';
+      if (!ids.length) { $('yt').style.display = 'none'; if (yt) { try { yt.stopVideo(); } catch(e){} } cargando.style.display = 'none'; sinVideo(); return; }
+      msg.style.display = 'none';
+      $('yt').style.display = 'block';
+      cargarAPI(function(){
+        if (!modoYT) return;
+        if (yt && ytListo) { cargarYT(ytIds[0]); return; }
+        if (yt) return;
+        yt = new YT.Player('ytPlayer', {
+          width: '100%', height: '100%', videoId: ytIds[0],
+          playerVars: { autoplay: 1, mute: 1, controls: 0, rel: 0, modestbranding: 1, playsinline: 1,
+                        iv_load_policy: 3, disablekb: 1, fs: 0, cc_load_policy: 0 },
+          events: {
+            onReady: function(e){
+              ytListo = true;
+              if (!modoYT) { e.target.stopVideo(); return; }
+              e.target.mute(); if (conSonido) e.target.unMute();
+              e.target.playVideo();
+            },
+            onStateChange: function(e){
+              if (e.data === 1) { ytErrores = 0; cargando.style.display = 'none'; } // reproduciendo
+              if (e.data === 0) siguienteYT();                                       // terminó
+            },
+            onError: function(){
+              ytErrores++;
+              if (ytErrores < ytIds.length) { siguienteYT(); return; }
+              cargando.style.display = 'none';
+              msg.innerHTML = 'No se pudieron reproducir los videos de <b>' + nombres[actual] + '</b><br>Revisá que los links de YouTube sean correctos';
+              msg.style.display = 'flex';
+            }
+          }
+        });
+      });
+    }
+    function pararYT(){
+      modoYT = false;
+      if (yt) { try { yt.stopVideo(); } catch(e){} }
+      $('yt').style.display = 'none';
+    }
+    function activarSonido(){
+      conSonido = true;
+      if (modoYT) { if (yt && ytListo) { try { yt.unMute(); yt.playVideo(); } catch(e){} } }
+      else { v.muted = false; play(); }
+    }
+
     function mostrarCapa(){
       $('capaNombre').innerHTML = nombres[actual] || '';
       capa.style.display = 'block';
@@ -249,6 +324,7 @@
       cortarDescargas();
       v.pause(); v.removeAttribute('src'); try{ v.load(); }catch(e){}
       liberar(lista); lista = [];
+      pararYT();
       v.style.display = 'none'; msg.style.display = 'none'; aviso.style.display = 'none'; cargando.style.display = 'none';
       ocultarCapa();
       document.body.className = '';
@@ -268,11 +344,13 @@
       document.body.className = 'play';
       clearTimeout(timerCursor);
       timerCursor = setTimeout(function(){ if (actual) document.body.className = 'play quieto'; }, 6000);
-      v.style.display = 'block';
       cargando.innerHTML = 'Cargando ' + nombres[clave] + '…';
       cargando.style.display = 'flex';
       pedirLista(function(L){
         if (mio !== turno) return;
+        if (L && L.yt) { versionActual = L.v; ponerYT(L.yt[clave] || []); arrancarChequeo(); return; }
+        pararYT();
+        v.style.display = 'block';
         var archivos = (L && L[clave]) ? L[clave] : [clave + '.mp4'];
         versionActual = L ? L.v : null;
         bajarTodos(archivos, versionActual, function(n, total, f){
@@ -302,6 +380,7 @@
         if (actualizando || !actual) return;
         pedirLista(function(L){
           if (!L || !actual || L.v === versionActual) return;
+          if (L.yt) { versionActual = L.v; ponerYT(L.yt[actual] || []); return; }
           var c = actual, mio = turno;
           actualizando = true;
           bajarTodos(L[c] || [], L.v, null, function(res, fallasRed){
@@ -341,12 +420,12 @@
 
     $('btnCambiar').onclick = function(e){ if (e) e.stopPropagation(); mostrarMenu(); };
     $('btnMenu').onclick = function(e){ if (e) e.stopPropagation(); mostrarMenu(); };
-    $('btnSeguir').onclick = function(e){ if (e) e.stopPropagation(); ocultarCapa(); v.muted = false; play(); pantallaCompleta(); };
+    $('btnSeguir').onclick = function(e){ if (e) e.stopPropagation(); ocultarCapa(); activarSonido(); pantallaCompleta(); };
 
     document.body.onclick = function(e){
       if (!actual) return;
       if (capa.contains(e.target) || e.target === $('btnMenu')) return;
-      v.muted = false; play(); pantallaCompleta();
+      activarSonido(); pantallaCompleta();
       mostrarCapa();
     };
 
@@ -409,12 +488,12 @@
   const LUGARES = 4;
   const slots = [];
 
-  function idDrive(link){
-    const m = link.match(/\/d\/([a-zA-Z0-9_-]{20,})/) || link.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
-    return m ? m[1] : null;
+  function idYouTube(link){
+    const m = link.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/)([a-zA-Z0-9_-]{11})/);
+    if (m) return m[1];
+    return /^[a-zA-Z0-9_-]{11}$/.test(link) ? link : null;
   }
-  const urlDrive = id => `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`;
-  const linkVisible = id => `https://drive.google.com/file/d/${id}/view`;
+  const linkVisible = id => `https://youtu.be/${id}`;
 
   // Armado de casilleros
   pantallas.forEach(([clave, nombre]) => {
@@ -426,12 +505,12 @@
       const el = document.createElement('div');
       el.className = 'slot vacio';
       el.innerHTML = `<div class="titulo">Video ${n}</div>
-        <video controls muted preload="metadata" playsinline></video>
+        <div class="previa"></div>
         <div class="hueco">Vacío</div>
-        <input type="text" class="link" placeholder="Pegá el link de Drive">
+        <input type="text" class="link" placeholder="Pegá el link de YouTube">
         <div class="botones"><button class="quitar">Quitar</button></div>
         <div class="estado"></div>`;
-      const sl = { clave, n, caja, el, video: el.querySelector('video'), link: el.querySelector('.link'),
+      const sl = { clave, n, caja, el, previa: el.querySelector('.previa'), link: el.querySelector('.link'),
                    quitar: el.querySelector('.quitar'), estado: el.querySelector('.estado'), id: null };
       sl.link.addEventListener('input', () => leerLink(sl));
       sl.quitar.onclick = () => { sl.link.value = ''; leerLink(sl); };
@@ -452,32 +531,20 @@
   function leerLink(sl){
     const t = sl.link.value.trim();
     sl.estado.className = 'estado'; sl.estado.textContent = '';
-    if (!t) {
-      sl.id = null; sl.el.classList.add('vacio');
-      sl.video.removeAttribute('src'); sl.video.load();
-      contar(); return;
-    }
-    const id = idDrive(t);
+    if (!t) { sl.id = null; sl.el.classList.add('vacio'); sl.previa.innerHTML = ''; contar(); return; }
+    const id = idYouTube(t);
     if (!id) {
-      sl.id = null; sl.el.classList.add('vacio');
+      sl.id = null; sl.el.classList.add('vacio'); sl.previa.innerHTML = '';
       sl.estado.className = 'estado error';
-      sl.estado.textContent = 'Ese link no parece de Google Drive.';
+      sl.estado.textContent = 'Ese link no parece de YouTube.';
       contar(); return;
     }
     if (id === sl.id) return;
     sl.id = id;
     sl.el.classList.remove('vacio');
-    sl.estado.textContent = 'Probando el video…';
-    sl.video.onloadedmetadata = () => {
-      const d = Math.round(sl.video.duration);
-      sl.estado.className = 'estado ok';
-      sl.estado.textContent = isFinite(d) ? `✓ Funciona · ${Math.floor(d / 60)}:${String(d % 60).padStart(2, '0')}` : '✓ Funciona';
-    };
-    sl.video.onerror = () => {
-      sl.estado.className = 'estado error';
-      sl.estado.textContent = 'No se pudo reproducir. Revisá que esté compartido como "Cualquier persona con el enlace".';
-    };
-    sl.video.src = urlDrive(id);
+    sl.previa.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?rel=0&modestbranding=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+    sl.estado.className = 'estado ok';
+    sl.estado.textContent = '✓ Link cargado. Revisá en la vista previa que se vea.';
     contar();
   }
 
@@ -487,17 +554,19 @@
     slots.forEach(sl => {
       let id = null;
       if (L.slots && L.slots[sl.clave]) id = L.slots[sl.clave][sl.n - 1] || null;
+      if (id && !/^[a-zA-Z0-9_-]{11}$/.test(id)) id = null; // links viejos de Drive
       if (id) { sl.link.value = linkVisible(id); leerLink(sl); }
     });
   }).catch(() => {});
 
   // Genera lista.json para subir a GitHub
   $('descargar').onclick = () => {
-    const L = { v: String(Date.now()), slots: {} };
+    const L = { v: String(Date.now()), slots: {}, yt: {} };
     pantallas.forEach(([clave]) => {
       const lista = slots.filter(x => x.clave === clave);
       L.slots[clave] = lista.map(x => x.id || '');
-      L[clave] = lista.filter(x => x.id).map(x => urlDrive(x.id));
+      L.yt[clave] = lista.filter(x => x.id).map(x => x.id);
+      L[clave] = [];
     });
     const blob = new Blob([JSON.stringify(L, null, 1)], { type: 'application/json' });
     const a = document.createElement('a');
