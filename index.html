@@ -178,7 +178,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 22</p>
+  <p class="version">Versión 23</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -359,6 +359,10 @@
       if (a === b) return true;
       return a < b ? (m >= a && m < b) : (m >= a || m < b);
     }
+    function textoHorario(){
+      if (!horario || !horario.activo) return 'Sin horario: se ve las 24 horas';
+      return 'Se ve de ' + horario.desde + ' a ' + horario.hasta;
+    }
     function revisarHorario(){
       var debeVerse = dentroDeHorario();
       if (debeVerse === !enNegro) return;
@@ -370,6 +374,7 @@
       } else {
         if (modoYT) { if (yt && ytListo) { try { yt.playVideo(); if (conSonido) yt.unMute(); } catch(e){} } }
         else play();
+        marcarOk();
       }
     }
     function arrancarHorario(){
@@ -409,7 +414,11 @@
     if (window.addEventListener) window.addEventListener('online', function(){ if (actual) { fallasSeguidas = 0; reintentar(); } });
 
     function mostrarCapa(){
-      $('capaNombre').innerHTML = nombres[actual] || '';
+      var ahora = new Date();
+      $('capaNombre').innerHTML = (nombres[actual] || '') +
+        '<br><span style="font-size:17px;color:#aaa">' + textoHorario() +
+        ' · ahora son las ' + (ahora.getHours() < 10 ? '0' : '') + ahora.getHours() +
+        ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes() + '</span>';
       capa.style.display = 'block';
       $('btnSeguir').focus();
       clearTimeout(timerCapa);
@@ -479,8 +488,9 @@
       intervalo = setInterval(function(){
         if (actualizando || !actual) return;
         pedirLista(function(L){
-          if (!L || !actual || L.v === versionActual) return;
+          if (!L || !actual) return;
           horario = L.horario; revisarHorario();
+          if (L.v === versionActual) return;
           if (L.yt) { versionActual = L.v; ponerYT(L.yt[actual] || []); return; }
           var c = actual, mio = turno;
           actualizando = true;
@@ -492,7 +502,7 @@
             ponerLista(res);
           });
         });
-      }, 120000);
+      }, 60000);
     }
 
     v.addEventListener('ended', siguienteVideo);
@@ -668,8 +678,23 @@
 
   ['horActivo','horDesde','horHasta'].forEach(id => $(id).addEventListener('change', hayCambios));
 
-  // Carga lo que ya está guardado
-  fetch('lista.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).then(L => {
+  // Carga lo que ya está guardado (primero desde GitHub, que siempre está al día)
+  async function listaGuardada(){
+    if (token) {
+      try {
+        const r = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/lista.json?ref=main`,
+          { headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' } });
+        if (r.ok) {
+          const j = await r.json();
+          return JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\n/g, '')))));
+        }
+      } catch (e) {}
+    }
+    const r2 = await fetch('lista.json?t=' + Date.now());
+    return r2.ok ? r2.json() : null;
+  }
+
+  function aplicarLista(L){
     if (!L) return;
     if (L.horario) {
       $('horActivo').checked = !!L.horario.activo;
@@ -681,8 +706,10 @@
       if (L.slots && L.slots[sl.clave]) id = L.slots[sl.clave][sl.n - 1] || null;
       if (id && !/^[a-zA-Z0-9_-]{11}$/.test(id)) id = null; // links viejos de Drive
       if (id) { sl.link.value = linkVisible(id); leerLink(sl); }
+      else { sl.link.value = ''; leerLink(sl); }
     });
-  }).catch(() => {});
+  }
+  listaGuardada().then(aplicarLista).catch(() => {});
 
   // ---- Guardado automático en GitHub ----
   const OWNER = 'farmex2026', REPO = 'videosfull';
@@ -761,7 +788,12 @@
       await guardarEnGitHub(armarLista());
       pendiente = false;
       const h = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-      marcarEstado('guardado', `✓ Guardado a las ${h}. Las TV se actualizan en unos minutos.`);
+      let extra = '';
+      try {
+        const L = await listaGuardada();
+        if (L && L.horario) extra = L.horario.activo ? ` Horario guardado: ${L.horario.desde} a ${L.horario.hasta}.` : ' Sin horario: las TV se ven las 24 horas.';
+      } catch (e) {}
+      marcarEstado('guardado', `✓ Guardado a las ${h}.${extra} Las TV se actualizan en un par de minutos.`);
     } catch (e) {
       marcarEstado('error', 'No se pudo guardar: ' + e.message);
     } finally {
