@@ -1,5 +1,5 @@
 {
- "v": "1790119247726",
+ "v": "1790119304634",
  "slots": {
   "tienda1": [
    "",
@@ -45,9 +45,9 @@
   "boxes": []
  },
  "horario": {
-  "activo": false,
+  "activo": true,
   "desde": "07:00",
-  "hasta": "20:30"
+  "hasta": "20:23"
  },
  "tienda1": [],
  "tienda2": [],
