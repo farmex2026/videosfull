@@ -1,8 +1,8 @@
 {
- "v": "1790097010402",
+ "v": "1790100389274",
  "slots": {
   "tienda1": [
-   "WenqsjUxlLg",
+   "",
    "",
    "",
    ""
@@ -20,7 +20,7 @@
    ""
   ],
   "tienda4": [
-   "",
+   "K8L5hPcd6xM",
    "",
    "",
    ""
@@ -33,12 +33,12 @@
   ]
  },
  "yt": {
-  "tienda1": [
-   "WenqsjUxlLg"
-  ],
+  "tienda1": [],
   "tienda2": [],
   "tienda3": [],
-  "tienda4": [],
+  "tienda4": [
+   "K8L5hPcd6xM"
+  ],
   "boxes": []
  },
  "tienda1": [],
