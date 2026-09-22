@@ -13,6 +13,7 @@
   #menu a:focus,#menu a:hover{border-color:#ffd100;outline:none;background:#2a57c4}
   #menu a.chico{width:auto;padding:10px 18px;font-size:18px;background:transparent;color:#aaa}
   #v{display:none;width:100%;height:100%;object-fit:contain}
+  #negro{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:9}
   #yt{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000}
   #yt iframe{width:100%;height:100%;border:0;pointer-events:none}
   body.quieto{cursor:none}
@@ -31,8 +32,10 @@
   body.play #btnMenu{display:block}
   body.play.quieto #btnMenu{display:none}
   #capa{z-index:11}
-  #aviso{display:none;position:fixed;top:30px;left:50%;transform:translateX(-50%);
-        background:rgba(0,0,0,.75);padding:12px 22px;border-radius:8px;font-size:22px}
+  #aviso{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:12;
+        flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.6);text-align:center}
+  #aviso .grande{font-size:56px;font-weight:bold}
+  #aviso .chico{font-size:26px;color:#ccc;margin-top:10px}
 
   /* Configuración (se usa desde la PC) */
   #config{display:none;max-width:900px;margin:0 auto;padding:30px 20px 60px;color:#1a1a1a}
@@ -41,6 +44,7 @@
   #config h2{font-size:18px;margin:0 0 14px}
   .caja{background:#fff;border-radius:10px;padding:20px;margin-bottom:20px;border:1px solid #d5dbe6}
   .caja label{display:block;font-size:14px;margin-bottom:12px;color:#444}
+  .caja input[type=time]{display:block;margin-top:4px;padding:8px;font-size:15px;border:1px solid #bbb;border-radius:6px}
   .caja input[type=text]{display:block;width:100%;box-sizing:border-box;
        margin-top:4px;padding:10px;font-size:16px;border:1px solid #bbb;border-radius:6px}
   .caja button{padding:9px 16px;font-size:14px;border:0;border-radius:6px;background:#1c3f8f;color:#fff;cursor:pointer}
@@ -111,11 +115,15 @@
   <button id="btnSeguir">Seguir viendo</button>
   <p style="font-size:16px;color:#aaa;margin:14px 0 0">Tecla 0 del control: volver al menú</p>
 </div>
-<div id="aviso">Apretá OK en el control para pantalla completa</div>
+<div id="aviso">
+  <div class="grande">▶ Apretá OK</div>
+  <div class="chico">para ver en pantalla completa</div>
+</div>
 <button id="btnMenu">☰ Menú</button>
 
 <video id="v" autoplay muted playsinline></video>
 <div id="yt"><div id="ytPlayer"></div></div>
+<div id="negro"></div>
 <div id="msg"></div>
 <div id="cargando"></div>
 
@@ -127,6 +135,15 @@
       Pegá en cada casillero el link de YouTube del video (conviene subirlo como <b>"No listado"</b>,
       así solo lo ve quien tiene el link). Cada TV pasa sus videos en orden (1, 2, 3, 4) y vuelve a empezar;
       los casilleros vacíos se saltean. Cuando termines, tocá <b>Descargar lista</b> y subí ese archivo a GitHub.</p>
+  </div>
+  <div class="caja">
+    <h2>Horario de las pantallas</h2>
+    <label style="font-size:15px"><input type="checkbox" id="horActivo"> Dejar las pantallas en negro fuera de horario</label>
+    <div style="display:flex;gap:16px;align-items:end;margin-top:12px;flex-wrap:wrap">
+      <label style="margin:0">Se ven desde<input type="time" id="horDesde" value="07:00" style="width:130px"></label>
+      <label style="margin:0">hasta<input type="time" id="horHasta" value="22:00" style="width:130px"></label>
+    </div>
+    <p class="nota">La TV queda encendida pero con la pantalla en negro. No se apaga sola: eso lo tiene que hacer el temporizador del televisor o un enchufe inteligente.</p>
   </div>
   <div id="tvs"></div>
   <div class="caja">
@@ -143,7 +160,7 @@
     </details>
   </div>
   <p><a href="./?menu">Volver al menú de pantallas</a></p>
-  <p class="version">Versión 18</p>
+  <p class="version">Versión 21</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -285,7 +302,7 @@
               e.target.playVideo();
             },
             onStateChange: function(e){
-              if (e.data === 1) { ytErrores = 0; cargando.style.display = 'none'; } // reproduciendo
+              if (e.data === 1) { ytErrores = 0; marcarOk(); cargando.style.display = 'none'; } // reproduciendo
               if (e.data === 0) siguienteYT();                                       // terminó
             },
             onError: function(){
@@ -304,11 +321,74 @@
       if (yt) { try { yt.stopVideo(); } catch(e){} }
       $('yt').style.display = 'none';
     }
+    function arrancarCompleta(){
+      aviso.style.display = 'none';
+      pantallaCompleta();
+    }
     function activarSonido(){
       conSonido = true;
       if (modoYT) { if (yt && ytListo) { try { yt.unMute(); yt.playVideo(); } catch(e){} } }
       else { v.muted = false; play(); }
     }
+
+    // ---- Horario: fuera de hora la pantalla queda en negro ----
+    var horario = null, enNegro = false, timerHorario = null;
+    function minutosAhora(){ var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+    function aMinutos(t){ var p = String(t || '').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
+    function dentroDeHorario(){
+      if (!horario || !horario.activo) return true;
+      var a = aMinutos(horario.desde), b = aMinutos(horario.hasta), m = minutosAhora();
+      if (a === b) return true;
+      return a < b ? (m >= a && m < b) : (m >= a || m < b);
+    }
+    function revisarHorario(){
+      var debeVerse = dentroDeHorario();
+      if (debeVerse === !enNegro) return;
+      enNegro = !debeVerse;
+      $('negro').style.display = enNegro ? 'block' : 'none';
+      if (enNegro) {
+        if (modoYT) { if (yt && ytListo) { try { yt.pauseVideo(); yt.mute(); } catch(e){} } }
+        else v.pause();
+      } else {
+        if (modoYT) { if (yt && ytListo) { try { yt.playVideo(); if (conSonido) yt.unMute(); } catch(e){} } }
+        else play();
+      }
+    }
+    function arrancarHorario(){
+      clearInterval(timerHorario);
+      timerHorario = setInterval(revisarHorario, 30000);
+      revisarHorario();
+    }
+
+    // ---- Si se corta internet, reintenta solo hasta que vuelva ----
+    var ultimoOk = 0, fallasSeguidas = 0, timerVigila = null;
+    function marcarOk(){ ultimoOk = new Date().getTime(); fallasSeguidas = 0; }
+    function reintentar(){
+      if (!actual || enNegro) return;
+      fallasSeguidas++;
+      if (fallasSeguidas >= 6) { location.reload(); return; } // 3 minutos sin poder: recarga la página
+      if (modoYT) {
+        if (yt && ytListo && ytIds.length) { try { cargarYT(ytIds[ytIdx]); } catch(e){} }
+        else if (ytIds.length) ponerYT(ytIds);
+      } else if (lista.length) {
+        v.src = lista[indice].url; play();
+      }
+    }
+    function vigilar(){
+      if (!actual || enNegro) return;
+      var ahora = new Date().getTime();
+      if (modoYT) {
+        var est = (yt && ytListo && yt.getPlayerState) ? yt.getPlayerState() : -1;
+        if (est === 1 || est === 3) { marcarOk(); return; } // reproduciendo o cargando
+      } else if (!v.paused && !v.ended && v.readyState > 2) { marcarOk(); return; }
+      if (ahora - ultimoOk > 30000) reintentar();
+    }
+    function arrancarVigilancia(){
+      marcarOk();
+      clearInterval(timerVigila);
+      timerVigila = setInterval(vigilar, 30000);
+    }
+    if (window.addEventListener) window.addEventListener('online', function(){ if (actual) { fallasSeguidas = 0; reintentar(); } });
 
     function mostrarCapa(){
       $('capaNombre').innerHTML = nombres[actual] || '';
@@ -323,6 +403,9 @@
     function mostrarMenu(){
       turno++; actual = null; actualizando = false;
       clearInterval(intervalo);
+      clearInterval(timerHorario);
+      clearInterval(timerVigila);
+      enNegro = false; $('negro').style.display = 'none';
       cortarDescargas();
       v.pause(); v.removeAttribute('src'); try{ v.load(); }catch(e){}
       liberar(lista); lista = [];
@@ -350,6 +433,8 @@
       cargando.style.display = 'flex';
       pedirLista(function(L){
         if (mio !== turno) return;
+        if (!L) { setTimeout(function(){ if (actual === clave && turno === mio) reproducir(clave); }, 20000); }
+        horario = L ? L.horario : null; arrancarHorario(); arrancarVigilancia();
         if (L && L.yt) { versionActual = L.v; ponerYT(L.yt[clave] || []); arrancarChequeo(); return; }
         pararYT();
         v.style.display = 'block';
@@ -366,12 +451,7 @@
         arrancarChequeo();
       });
       if (!enCompleta()) {
-        setTimeout(function(){
-          if (!enCompleta() && actual) {
-            aviso.style.display = 'block';
-            setTimeout(function(){ aviso.style.display = 'none'; }, 6000);
-          }
-        }, 800);
+        setTimeout(function(){ if (!enCompleta() && actual) aviso.style.display = 'flex'; }, 800);
       }
     }
 
@@ -382,6 +462,7 @@
         if (actualizando || !actual) return;
         pedirLista(function(L){
           if (!L || !actual || L.v === versionActual) return;
+          horario = L.horario; revisarHorario();
           if (L.yt) { versionActual = L.v; ponerYT(L.yt[actual] || []); return; }
           var c = actual, mio = turno;
           actualizando = true;
@@ -397,7 +478,7 @@
     }
 
     v.addEventListener('ended', siguienteVideo);
-    v.addEventListener('playing', function(){ errores = 0; });
+    v.addEventListener('playing', function(){ errores = 0; marcarOk(); });
     v.addEventListener('error', function(){
       if (!actual || !lista.length) return;
       errores++;
@@ -426,6 +507,7 @@
 
     document.body.onclick = function(e){
       if (!actual) return;
+      if (aviso.style.display === 'flex') { arrancarCompleta(); return; }
       if (capa.contains(e.target) || e.target === $('btnMenu')) return;
       activarSonido(); pantallaCompleta();
       mostrarCapa();
@@ -443,6 +525,10 @@
     document.onkeydown = function(e){
       if (!actual) return;
       var k = e.keyCode;
+      if (aviso.style.display === 'flex' && ATRAS.indexOf(k) < 0) {
+        if (e.preventDefault) e.preventDefault();
+        arrancarCompleta(); return false;
+      }
       if (ATRAS.indexOf(k) > -1) {
         if (e.preventDefault) e.preventDefault();
         if (capaVisible()) ocultarCapa(); else mostrarCapa();
@@ -551,7 +637,8 @@
   }
 
   function armarLista(){
-    const L = { v: String(Date.now()), slots: {}, yt: {} };
+    const L = { v: String(Date.now()), slots: {}, yt: {},
+                horario: { activo: $('horActivo').checked, desde: $('horDesde').value || '07:00', hasta: $('horHasta').value || '22:00' } };
     pantallas.forEach(([clave]) => {
       const lista = slots.filter(x => x.clave === clave);
       L.slots[clave] = lista.map(x => x.id || '');
@@ -564,6 +651,11 @@
   // Carga lo que ya está guardado
   fetch('lista.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).then(L => {
     if (!L) return;
+    if (L.horario) {
+      $('horActivo').checked = !!L.horario.activo;
+      if (L.horario.desde) $('horDesde').value = L.horario.desde;
+      if (L.horario.hasta) $('horHasta').value = L.horario.hasta;
+    }
     slots.forEach(sl => {
       let id = null;
       if (L.slots && L.slots[sl.clave]) id = L.slots[sl.clave][sl.n - 1] || null;
