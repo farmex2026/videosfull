@@ -46,6 +46,10 @@
   .tv h2 small{font-size:13px;font-weight:normal;color:#666}
   .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
   .slot{background:#f5f7fb;border:1px solid #e0e5ee;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+  .slot.pendiente{border:2px solid #e0a100;background:#fff8e6}
+  .slot.pendiente .subir{background:#e07b00}
+  .slot .aviso-local{display:none;font-size:12px;font-weight:bold;color:#a15c00}
+  .slot.pendiente .aviso-local{display:block}
   .slot .titulo{font-weight:bold;font-size:14px}
   .slot video{width:100%;aspect-ratio:16/9;background:#000;border-radius:6px}
   .slot.vacio video{display:none}
@@ -101,7 +105,7 @@
   <div class="caja">
     <h2>Conexión con GitHub</h2>
     <label>Usuario de GitHub<input type="text" autocomplete="off" id="owner" value="farmex2026"></label>
-    <label>Repositorio<input type="text" id="repo" value="videos" autocomplete="off"></label>
+    <label>Repositorio<input type="text" id="repo" value="videosfull" autocomplete="off"></label>
     <label>Token de acceso<input type="text" id="token" placeholder="Pegá acá el token (github_pat_...)" autocomplete="off" spellcheck="false"></label>
     <p id="estadoToken" class="estadoToken falta">Falta cargar el token</p>
     <button id="guardarDatos">Guardar datos</button>
@@ -117,7 +121,7 @@
   <p class="nota">Cada TV pasa sus videos en orden (1, 2, 3, 4) y vuelve a empezar. Los lugares vacíos se saltean.
      Después de subir o borrar, las TV se actualizan solas en unos minutos.</p>
   <p><a href="./?menu">Volver al menú de pantallas</a></p>
-  <p class="version">Versión 11</p>
+  <p class="version">Versión 12</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -371,7 +375,7 @@
   // ---- Datos de conexión ----
   let almacenOk = true;
   try { localStorage.setItem('gh_prueba', '1'); localStorage.removeItem('gh_prueba'); } catch(e) { almacenOk = false; }
-  if (almacenOk && localStorage.getItem('gh_repo') === 'video-tv') localStorage.setItem('gh_repo', 'videos');
+  if (almacenOk && ['video-tv','videos'].indexOf(localStorage.getItem('gh_repo')) > -1) localStorage.setItem('gh_repo', 'videosfull');
   if (almacenOk) campos.forEach(c => { const g = localStorage.getItem('gh_' + c); if (g) $(c).value = g; });
   function marcarToken(){
     const t = $('token').value.trim(), e = $('estadoToken');
@@ -479,6 +483,7 @@
       el.innerHTML = `<div class="titulo">Video ${n}</div>
         <video controls muted preload="metadata" playsinline></video>
         <div class="hueco">Vacío</div>
+        <div class="aviso-local">● Seleccionado, falta tocar Subir</div>
         <div class="info"></div>
         <input type="file" accept="video/mp4">
         <div class="botones"><button class="subir">Subir</button><button class="borrar">Borrar</button></div>
@@ -490,6 +495,7 @@
         input: el.querySelector('input'), subir: el.querySelector('.subir'), borrar: el.querySelector('.borrar'),
         barra: el.querySelector('.barra'), estado: el.querySelector('.estado')
       };
+      s.input.onchange = () => previsualizar(s);
       s.subir.onclick = () => subirVideo(s);
       s.borrar.onclick = () => borrarVideo(s);
       slots[s.archivo] = s;
@@ -501,12 +507,42 @@
   function contar(){
     pantallas.forEach(([clave]) => {
       const lista = Object.values(slots).filter(s => s.clave === clave);
-      const llenos = lista.filter(s => !s.el.classList.contains('vacio')).length;
+      const llenos = lista.filter(s => s.existe).length;
       lista[0].caja.querySelector('.cuenta').textContent = llenos ? `${llenos} video${llenos > 1 ? 's' : ''} en loop` : 'Sin videos';
     });
   }
 
+  function soltarLocal(s){
+    if (s.local) { URL.revokeObjectURL(s.local); s.local = null; }
+    s.el.classList.remove('pendiente');
+  }
+
+  // Al elegir un archivo, lo muestra en el casillero antes de subirlo
+  function previsualizar(s){
+    const f = s.input.files[0];
+    soltarLocal(s);
+    s.estado.textContent = ''; s.estado.className = 'estado'; s.barra.style.display = 'none';
+    if (!f) { mostrarSlot(s, s.existe); contar(); return; }
+    s.local = URL.createObjectURL(f);
+    s.el.classList.remove('vacio');
+    s.el.classList.add('pendiente');
+    const mb = f.size / 1048576;
+    const nombre = f.name.replace(/</g, '&lt;');
+    const peso = mb > 95 ? `<b style="color:#c62828">${mb.toFixed(1)} MB · muy pesado, comprimilo</b>`
+               : mb > 25 ? `<b style="color:#a15c00">${mb.toFixed(1)} MB · pesado</b>` : `${mb.toFixed(1)} MB`;
+    const texto = `${nombre}<br><small>${peso}</small>`;
+    s.info.innerHTML = texto;
+    s.video.onloadedmetadata = () => {
+      if (!isFinite(s.video.duration)) return;
+      const d = Math.round(s.video.duration);
+      s.info.innerHTML = texto + '<br><small>Duración: ' + Math.floor(d / 60) + ':' + String(d % 60).padStart(2, '0') + '</small>';
+    };
+    s.video.src = s.local;
+  }
+
   async function mostrarSlot(s, existe){
+    s.existe = existe;
+    if (s.local) return; // hay un video elegido sin subir: no lo pisa
     s.el.classList.toggle('vacio', !existe);
     if (!existe) { s.video.removeAttribute('src'); s.video.load(); s.info.textContent = ''; return; }
     s.video.src = s.archivo + '?t=' + Date.now();
@@ -601,6 +637,7 @@
       estado.className = 'estado ok';
       estado.textContent = `Subido en ${segundos()} s. Las TV lo muestran en unos minutos.`;
       input.value = '';
+      soltarLocal(s);
       setTimeout(() => refrescar(s), 1500);
       setTimeout(() => refrescar(s), 90000); // la vista previa puede tardar en actualizarse
     } catch (e) {
