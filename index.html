@@ -44,9 +44,6 @@
   .caja button{padding:9px 16px;font-size:14px;border:0;border-radius:6px;background:#1c3f8f;color:#fff;cursor:pointer}
   .caja button:disabled{background:#999;cursor:default}
   .nota{font-size:13px;color:#666;margin:10px 0 0}
-  .estadoToken{display:inline-block;margin:0 0 12px;padding:6px 12px;border-radius:6px;font-size:14px;font-weight:bold}
-  .estadoToken.ok{background:#dcf5e3;color:#1a7f37}
-  .estadoToken.falta{background:#fde2e2;color:#c62828}
 
   .tv h2{display:flex;justify-content:space-between;align-items:baseline}
   .tv h2 small{font-size:13px;font-weight:normal;color:#666}
@@ -65,6 +62,10 @@
   .slot .info{font-size:13px;color:#333;line-height:1.4;word-break:break-word;min-height:18px}
   .slot .info small{color:#777}
   .slot input[type=file]{font-size:12px;width:100%}
+  .slot .link{width:100%;box-sizing:border-box;padding:8px;font-size:12px;border:1px solid #bbb;border-radius:6px}
+  .slot .quitar{background:#c62828}
+  .slot.vacio .quitar{display:none}
+  .pasos{font-size:14px;line-height:1.7;color:#333;padding-left:20px;margin:14px 0 0}
   .slot .drive{display:flex;gap:6px}
   .slot .drive input{flex:1;min-width:0;padding:7px;font-size:12px;border:1px solid #bbb;border-radius:6px;margin:0}
   .slot .drive button{background:#0f9d58;padding:7px 10px;font-size:12px}
@@ -115,25 +116,26 @@
 <div id="config">
   <h1>Configuración de pantallas</h1>
   <div class="caja">
-    <h2>Conexión con GitHub</h2>
-    <label>Usuario de GitHub<input type="text" autocomplete="off" id="owner" value="farmex2026"></label>
-    <label>Repositorio<input type="text" id="repo" value="videosfull" autocomplete="off"></label>
-    <label>Token de acceso<input type="text" id="token" placeholder="Pegá acá el token (github_pat_...)" autocomplete="off" spellcheck="false"></label>
-    <p id="estadoToken" class="estadoToken falta">Falta cargar el token</p>
-    <button id="guardarDatos">Guardar datos</button>
-    <p class="nota" id="notaDatos">Estos datos quedan guardados solo en esta computadora.</p>
-  </div>
-  <div class="caja espacio">
-    <h2>Espacio usado en GitHub</h2>
-    <div class="medidor"><div id="medidorBarra"></div></div>
-    <p id="espacioTexto">Calculando…</p>
-    <p class="nota" id="espacioNota">GitHub recomienda no pasar de 1 GB. Borrar videos no libera espacio: cuando se acerque al límite, hay que limpiar el repositorio.</p>
+    <h2>Cómo funciona</h2>
+    <p class="nota" style="margin:0;font-size:14px;line-height:1.6">
+      Pegá en cada casillero el link de Google Drive del video (tiene que estar compartido como
+      <b>"Cualquier persona con el enlace"</b>). Cada TV pasa sus videos en orden (1, 2, 3, 4) y vuelve a empezar;
+      los casilleros vacíos se saltean. Cuando termines, tocá <b>Descargar lista</b> y subí ese archivo a GitHub.</p>
   </div>
   <div id="tvs"></div>
-  <p class="nota">Cada TV pasa sus videos en orden (1, 2, 3, 4) y vuelve a empezar. Los lugares vacíos se saltean.
-     Después de subir o borrar, las TV se actualizan solas en unos minutos.</p>
+  <div class="caja">
+    <h2>Guardar cambios</h2>
+    <button id="descargar">Descargar lista</button>
+    <p class="nota" id="notaGuardar"></p>
+    <ol class="pasos">
+      <li>Tocá <b>Descargar lista</b>. Se baja un archivo llamado <b>lista.json</b>.</li>
+      <li>Entrá a tu repositorio <b>videosfull</b> en GitHub.</li>
+      <li>Tocá <b>Add file → Upload files</b> y arrastrá el <b>lista.json</b>.</li>
+      <li>Tocá <b>Commit changes</b>. Las TV se actualizan solas en unos minutos.</li>
+    </ol>
+  </div>
   <p><a href="./?menu">Volver al menú de pantallas</a></p>
-  <p class="version">Versión 15</p>
+  <p class="version">Versión 16</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -405,159 +407,20 @@
 
   const pantallas = [['tienda1','TV 1'],['tienda2','TV 2'],['tienda3','TV 3'],['tienda4','TV 4'],['boxes','TV Boxes']];
   const LUGARES = 4;
-  const archivoDe = (clave, n) => n === 1 ? clave + '.mp4' : clave + '_' + n + '.mp4';
-  const campos = ['owner','repo','token'];
-  const slots = {};
+  const slots = [];
 
-  // ---- Datos de conexión ----
-  let almacenOk = true;
-  try { localStorage.setItem('gh_prueba', '1'); localStorage.removeItem('gh_prueba'); } catch(e) { almacenOk = false; }
-  if (almacenOk && ['video-tv','videos'].indexOf(localStorage.getItem('gh_repo')) > -1) localStorage.setItem('gh_repo', 'videosfull');
-  if (almacenOk) campos.forEach(c => { const g = localStorage.getItem('gh_' + c); if (g) $(c).value = g; });
-  function marcarToken(){
-    const t = $('token').value.trim(), e = $('estadoToken');
-    if (t.indexOf('github_pat_') === 0 || t.indexOf('ghp_') === 0) { e.className = 'estadoToken ok'; e.textContent = '✓ Token cargado y guardado en esta computadora'; }
-    else if (t) { e.className = 'estadoToken falta'; e.textContent = 'Eso no parece un token. Tiene que empezar con github_pat_'; }
-    else { e.className = 'estadoToken falta'; e.textContent = 'Falta cargar el token'; }
-  }
-  const guardarCampos = () => {
-    if (almacenOk) campos.forEach(c => localStorage.setItem('gh_' + c, $(c).value.trim()));
-    marcarToken();
-  };
-  campos.forEach(c => $(c).addEventListener('input', guardarCampos));
-  $('guardarDatos').onclick = () => { guardarCampos(); cargarTodo(); };
-  if (!almacenOk) $('notaDatos').textContent = 'Este navegador no permite guardar datos (¿modo incógnito?). Abrí la página en una ventana normal.';
-  marcarToken();
-
-  function datos(){
-    const d = { owner: $('owner').value.trim(), repo: $('repo').value.trim(), token: $('token').value.trim() };
-    if (!d.owner || !d.repo || !d.token) throw new Error('Completá usuario, repositorio y token arriba.');
-    return d;
-  }
-  function cabeceras(){
-    const h = { Accept: 'application/vnd.github+json' };
-    const t = $('token').value.trim();
-    if (t) h.Authorization = 'Bearer ' + t;
-    return h;
-  }
-  const base = () => `https://api.github.com/repos/${$('owner').value.trim()}/${$('repo').value.trim()}`;
-
-  async function api(d, ruta, metodo, cuerpo){
-    const r = await fetch(`${base()}/contents/${ruta}`, {
-      method: metodo, headers: cabeceras(), body: cuerpo ? JSON.stringify(cuerpo) : undefined
-    });
-    if (r.status === 401) throw new Error('El token no es válido o venció.');
-    if (r.status === 403) throw new Error('El token no tiene permiso para escribir en el repositorio.');
-    return r;
-  }
-  async function shaDe(d, ruta){
-    const g = await api(d, ruta + '?ref=main', 'GET');
-    if (g.ok) return (await g.json()).sha;
-    if (g.status === 404) return null;
-    throw new Error('No se pudo leer el repositorio (' + g.status + ').');
-  }
-  function putConProgreso(d, ruta, cuerpo, alAvanzar){
-    return new Promise((ok, mal) => {
-      const x = new XMLHttpRequest();
-      x.open('PUT', `${base()}/contents/${ruta}`);
-      x.setRequestHeader('Authorization', 'Bearer ' + d.token);
-      x.setRequestHeader('Accept', 'application/vnd.github+json');
-      x.upload.onprogress = e => { if (e.lengthComputable && alAvanzar) alAvanzar(e.loaded / e.total); };
-      x.onload = () => {
-        if (x.status >= 200 && x.status < 300) return ok();
-        if (x.status === 401) return mal(new Error('El token no es válido o venció.'));
-        if (x.status === 403) return mal(new Error('El token no tiene permiso para escribir en el repositorio.'));
-        if (x.status === 404) return mal(new Error('No se encontró el repositorio. Revisá usuario y nombre.'));
-        const err = new Error(x.status === 409 || x.status === 422
-          ? 'GitHub estaba ocupado guardando otro cambio. Probá de nuevo en unos segundos.'
-          : x.status === 413 ? 'El archivo es muy pesado para GitHub. Comprimilo.'
-          : 'GitHub rechazó el archivo (' + x.status + ').');
-        err.status = x.status;
-        mal(err);
-      };
-      x.onerror = () => mal(new Error('Se cortó la conexión. Probá de nuevo.'));
-      x.send(JSON.stringify(cuerpo));
-    });
-  }
-  const esperar = ms => new Promise(r => setTimeout(r, ms));
-  // Si GitHub está guardando otro cambio (error 409), espera y reintenta solo
-  async function subirArchivo(d, ruta, base64, mensaje, alAvanzar){
-    for (let intento = 1; ; intento++) {
-      const sha = await shaDe(d, ruta);
-      const cuerpo = { message: mensaje, content: base64, branch: 'main' };
-      if (sha) cuerpo.sha = sha;
-      try { await putConProgreso(d, ruta, cuerpo, alAvanzar); return; }
-      catch (e) {
-        if ((e.status === 409 || e.status === 422) && intento < 5) { await esperar(1500 * intento); continue; }
-        throw e;
-      }
-    }
-  }
-  async function borrarArchivo(d, ruta, mensaje){
-    for (let intento = 1; ; intento++) {
-      const sha = await shaDe(d, ruta);
-      if (!sha) return;
-      const r = await api(d, ruta, 'DELETE', { message: mensaje, sha, branch: 'main' });
-      if (r.ok || r.status === 404) return;
-      if ((r.status === 409 || r.status === 422) && intento < 5) { await esperar(1500 * intento); continue; }
-      throw new Error('GitHub no dejó borrar el video (' + r.status + ').');
-    }
-  }
-  function aBase64(archivo, alAvanzar){
-    return new Promise((ok, mal) => {
-      const lector = new FileReader();
-      lector.onprogress = e => { if (e.lengthComputable && alAvanzar) alAvanzar(e.loaded / e.total); };
-      lector.onload = () => ok(lector.result.split(',')[1]);
-      lector.onerror = () => mal(new Error('No se pudo leer el archivo.'));
-      lector.readAsDataURL(archivo);
-    });
-  }
-  async function archivosDelRepo(){
-    const r = await fetch(`${base()}/contents/?ref=main`, { headers: cabeceras() });
-    if (r.status === 401) throw new Error('El token no es válido o venció.');
-    if (!r.ok) throw new Error('No se pudo leer el repositorio (' + r.status + '). Revisá usuario y nombre.');
-    return new Set((await r.json()).map(f => f.name));
-  }
-
-  // ---- Links de Google Drive ----
-  let enlaces = {};
-  const b64texto = t => btoa(unescape(encodeURIComponent(t)));
   function idDrive(link){
     const m = link.match(/\/d\/([a-zA-Z0-9_-]{20,})/) || link.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
     return m ? m[1] : null;
   }
   const urlDrive = id => `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`;
-  async function leerEnlaces(){
-    const r = await fetch(`${base()}/contents/enlaces.json?ref=main`, { headers: cabeceras() });
-    if (!r.ok) return {};
-    const j = await r.json();
-    try { return JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\n/g, ''))))); } catch (e) { return {}; }
-  }
-  async function guardarEnlaces(d){
-    await subirArchivo(d, 'enlaces.json', b64texto(JSON.stringify(enlaces, null, 1)), 'Actualizar links de Drive');
-  }
+  const linkVisible = id => `https://drive.google.com/file/d/${id}/view`;
 
-  // Arma la lista de reproducción que leen las TV
-  async function actualizarLista(d){
-    const hay = await archivosDelRepo();
-    const L = { v: String(Date.now()) };
-    pantallas.forEach(([clave]) => {
-      L[clave] = [];
-      for (let n = 1; n <= LUGARES; n++) {
-        const a = archivoDe(clave, n);
-        if (enlaces[a]) L[clave].push(urlDrive(enlaces[a].id));
-        else if (hay.has(a)) L[clave].push(a);
-      }
-    });
-    const json = JSON.stringify(L, null, 1);
-    await subirArchivo(d, 'lista.json', btoa(unescape(encodeURIComponent(json))), 'Actualizar lista de videos');
-  }
-
-  // ---- Armado de la pantalla ----
+  // Armado de casilleros
   pantallas.forEach(([clave, nombre]) => {
     const caja = document.createElement('div');
     caja.className = 'caja tv';
-    caja.innerHTML = `<h2>${nombre} <small class="cuenta"></small></h2><div class="slots"></div>`;
+    caja.innerHTML = `<h2>${nombre} <small class="cuenta">Sin videos</small></h2><div class="slots"></div>`;
     const cont = caja.querySelector('.slots');
     for (let n = 1; n <= LUGARES; n++) {
       const el = document.createElement('div');
@@ -565,27 +428,14 @@
       el.innerHTML = `<div class="titulo">Video ${n}</div>
         <video controls muted preload="metadata" playsinline></video>
         <div class="hueco">Vacío</div>
-        <div class="aviso-local">● Seleccionado, falta tocar Subir</div>
-        <div class="info"></div>
-        <input type="file" accept="video/mp4">
-        <div class="botones"><button class="subir">Subir</button><button class="borrar">Borrar</button></div>
-        <div class="o">o usar un video de Google Drive</div>
-        <div class="drive"><input type="text" class="link" placeholder="Pegá el link de Drive"><button class="usarLink">Usar link</button></div>
-        <div class="barra"><div></div><span>0%</span></div>
+        <input type="text" class="link" placeholder="Pegá el link de Drive">
+        <div class="botones"><button class="quitar">Quitar</button></div>
         <div class="estado"></div>`;
-      const s = {
-        clave, nombre, n, archivo: archivoDe(clave, n), el, caja,
-        video: el.querySelector('video'), info: el.querySelector('.info'),
-        input: el.querySelector('input'), subir: el.querySelector('.subir'), borrar: el.querySelector('.borrar'),
-        barra: el.querySelector('.barra'), estado: el.querySelector('.estado')
-      };
-      s.link = el.querySelector('.link');
-      s.usarLink = el.querySelector('.usarLink');
-      s.usarLink.onclick = () => usarLink(s);
-      s.input.onchange = () => previsualizar(s);
-      s.subir.onclick = () => subirVideo(s);
-      s.borrar.onclick = () => borrarVideo(s);
-      slots[s.archivo] = s;
+      const sl = { clave, n, caja, el, video: el.querySelector('video'), link: el.querySelector('.link'),
+                   quitar: el.querySelector('.quitar'), estado: el.querySelector('.estado'), id: null };
+      sl.link.addEventListener('input', () => leerLink(sl));
+      sl.quitar.onclick = () => { sl.link.value = ''; leerLink(sl); };
+      slots.push(sl);
       cont.appendChild(el);
     }
     $('tvs').appendChild(caja);
@@ -593,215 +443,70 @@
 
   function contar(){
     pantallas.forEach(([clave]) => {
-      const lista = Object.values(slots).filter(s => s.clave === clave);
-      const llenos = lista.filter(s => s.existe).length;
+      const lista = slots.filter(x => x.clave === clave);
+      const llenos = lista.filter(x => x.id).length;
       lista[0].caja.querySelector('.cuenta').textContent = llenos ? `${llenos} video${llenos > 1 ? 's' : ''} en loop` : 'Sin videos';
     });
   }
 
-  function soltarLocal(s){
-    if (s.local) { URL.revokeObjectURL(s.local); s.local = null; }
-    s.el.classList.remove('pendiente');
-  }
-
-  // Al elegir un archivo, lo muestra en el casillero antes de subirlo
-  function previsualizar(s){
-    const f = s.input.files[0];
-    soltarLocal(s);
-    s.estado.textContent = ''; s.estado.className = 'estado'; s.barra.style.display = 'none';
-    if (!f) { mostrarSlot(s, s.existe); contar(); return; }
-    s.local = URL.createObjectURL(f);
-    s.el.classList.remove('vacio');
-    s.el.classList.add('pendiente');
-    const mb = f.size / 1048576;
-    const nombre = f.name.replace(/</g, '&lt;');
-    const peso = mb > 95 ? `<b style="color:#c62828">${mb.toFixed(1)} MB · muy pesado, comprimilo</b>`
-               : mb > 25 ? `<b style="color:#a15c00">${mb.toFixed(1)} MB · pesado</b>` : `${mb.toFixed(1)} MB`;
-    const texto = `${nombre}<br><small>${peso}</small>`;
-    s.info.innerHTML = texto;
-    s.video.onloadedmetadata = () => {
-      if (!isFinite(s.video.duration)) return;
-      const d = Math.round(s.video.duration);
-      s.info.innerHTML = texto + '<br><small>Duración: ' + Math.floor(d / 60) + ':' + String(d % 60).padStart(2, '0') + '</small>';
-    };
-    s.video.src = s.local;
-  }
-
-  async function mostrarSlot(s, hayArchivo){
-    s.hayArchivo = hayArchivo;
-    const enl = enlaces[s.archivo];
-    const existe = hayArchivo || !!enl;
-    s.existe = existe;
-    if (s.local) return; // hay un video elegido sin subir: no lo pisa
-    s.el.classList.toggle('vacio', !existe);
-    if (enl) {
-      const texto = '<b style="color:#0f9d58">Google Drive</b><br><small>' + (enl.fecha ? 'Cargado el ' + enl.fecha : '') + '</small>';
-      s.info.innerHTML = texto;
-      s.video.onerror = () => {
-        s.info.innerHTML = texto + '<br><small style="color:#c62828">No se pudo reproducir. Revisá que esté compartido como "Cualquier persona con el enlace".</small>';
-      };
-      s.video.onloadedmetadata = () => {
-        if (!isFinite(s.video.duration)) return;
-        const d = Math.round(s.video.duration);
-        s.info.innerHTML = texto + '<br><small>Duración: ' + Math.floor(d / 60) + ':' + String(d % 60).padStart(2, '0') + '</small>';
-      };
-      s.video.src = urlDrive(enl.id);
-      return;
+  function leerLink(sl){
+    const t = sl.link.value.trim();
+    sl.estado.className = 'estado'; sl.estado.textContent = '';
+    if (!t) {
+      sl.id = null; sl.el.classList.add('vacio');
+      sl.video.removeAttribute('src'); sl.video.load();
+      contar(); return;
     }
-    s.video.onerror = null;
-    if (!existe) { s.video.removeAttribute('src'); s.video.load(); s.info.textContent = ''; return; }
-    s.video.src = s.archivo + '?t=' + Date.now();
-    let texto = '';
-    try {
-      const r = await fetch(`${base()}/commits?path=${s.archivo}&per_page=1`, { headers: cabeceras() });
-      if (r.ok) {
-        const c = (await r.json())[0];
-        if (c) {
-          const fecha = new Date(c.commit.author.date).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
-          const m = c.commit.message.match(/^Video: (.+)$/m);
-          texto = (m ? m[1].replace(/</g, '&lt;') + '<br>' : '') + '<small>Subido el ' + fecha + '</small>';
-        }
-      }
-    } catch (e) {}
-    s.info.innerHTML = texto;
-    s.video.onloadedmetadata = () => {
-      if (!isFinite(s.video.duration)) return;
-      const d = Math.round(s.video.duration);
-      s.info.innerHTML = texto + '<br><small>Duración: ' + Math.floor(d / 60) + ':' + String(d % 60).padStart(2, '0') + '</small>';
-    };
-  }
-
-  // Espacio que ocupa el repositorio (GitHub lo actualiza con un poco de demora)
-  async function mostrarEspacio(){
-    try {
-      const r = await fetch(base(), { headers: cabeceras() });
-      if (!r.ok) throw 0;
-      const kb = (await r.json()).size || 0;
-      const mb = kb / 1024, pct = Math.min(100, mb / 1024 * 100);
-      const barra = $('medidorBarra');
-      barra.style.width = Math.max(pct, 1) + '%';
-      barra.className = pct >= 80 ? 'lleno' : pct >= 50 ? 'medio' : '';
-      const usado = mb >= 1000 ? (mb / 1024).toFixed(2) + ' GB' : Math.round(mb) + ' MB';
-      $('espacioTexto').innerHTML = `<b>${usado}</b> de 1 GB (${Math.round(pct)}%)` +
-        (pct >= 80 ? ' · <b style="color:#c62828">Conviene limpiar el repositorio</b>' :
-         pct >= 50 ? ' · Va por la mitad' : ' · Hay lugar de sobra');
-    } catch (e) {
-      $('espacioTexto').textContent = 'No se pudo calcular el espacio.';
+    const id = idDrive(t);
+    if (!id) {
+      sl.id = null; sl.el.classList.add('vacio');
+      sl.estado.className = 'estado error';
+      sl.estado.textContent = 'Ese link no parece de Google Drive.';
+      contar(); return;
     }
-  }
-
-  async function cargarTodo(){
-    mostrarEspacio();
-    try { enlaces = await leerEnlaces(); } catch (e) { enlaces = {}; }
-    let hay;
-    try { hay = await archivosDelRepo(); }
-    catch (e) { Object.values(slots).forEach(s => { s.info.textContent = ''; }); $('notaDatos').textContent = e.message; return; }
-    Object.values(slots).forEach(s => mostrarSlot(s, hay.has(s.archivo)));
+    if (id === sl.id) return;
+    sl.id = id;
+    sl.el.classList.remove('vacio');
+    sl.estado.textContent = 'Probando el video…';
+    sl.video.onloadedmetadata = () => {
+      const d = Math.round(sl.video.duration);
+      sl.estado.className = 'estado ok';
+      sl.estado.textContent = isFinite(d) ? `✓ Funciona · ${Math.floor(d / 60)}:${String(d % 60).padStart(2, '0')}` : '✓ Funciona';
+    };
+    sl.video.onerror = () => {
+      sl.estado.className = 'estado error';
+      sl.estado.textContent = 'No se pudo reproducir. Revisá que esté compartido como "Cualquier persona con el enlace".';
+    };
+    sl.video.src = urlDrive(id);
     contar();
   }
-  async function refrescar(s){
-    try { const hay = await archivosDelRepo(); mostrarSlot(s, hay.has(s.archivo)); contar(); } catch (e) {}
-    mostrarEspacio();
-  }
 
-  // ---- Subir ----
-  async function subirVideo(s){
-    const { input, subir, estado, barra } = s;
-    const relleno = barra.querySelector('div'), texto = barra.querySelector('span');
-    estado.className = 'estado';
-    let etapa = '', inicio = 0, reloj = null;
-    const segundos = () => Math.round((Date.now() - inicio) / 1000);
-    const pintar = () => { estado.textContent = etapa + ' · ' + segundos() + ' s'; };
-    const mostrar = (txt, f) => {
-      etapa = txt;
-      const pct = Math.min(100, Math.round(f * 100));
-      relleno.style.width = pct + '%'; texto.textContent = pct + '%';
-      pintar();
-    };
-    try {
-      const d = datos();
-      const archivo = input.files[0];
-      if (!archivo) throw new Error('Elegí un video primero.');
-      const mb = archivo.size / 1048576;
-      if (mb > 95) throw new Error(`Pesa ${mb.toFixed(0)} MB. GitHub acepta hasta 100 MB por video. Comprimilo con HandBrake.`);
-      if (mb > 25 && !confirm(`El video pesa ${mb.toFixed(0)} MB. Puede tardar o fallar. ¿Subirlo igual?`)) return;
-      subir.disabled = true; s.borrar.disabled = true; subir.textContent = 'Subiendo…';
-      barra.style.display = 'block';
-      relleno.style.background = ''; texto.style.color = '';
-      inicio = Date.now(); reloj = setInterval(pintar, 1000);
-      mostrar('Preparando', 0);
-      const b64 = await aBase64(archivo, f => mostrar('Preparando', f));
-      mostrar('Conectando', 0);
-      await subirArchivo(d, s.archivo, b64, `Actualizar ${s.archivo}\n\nVideo: ${archivo.name}`, f => {
-        if (f < 1) mostrar(`Subiendo ${(mb * f).toFixed(1)} de ${mb.toFixed(1)} MB`, f);
-        else mostrar('GitHub está guardando', 1);
-      });
-      mostrar('Avisando a las TV', 1);
-      if (enlaces[s.archivo]) { delete enlaces[s.archivo]; await guardarEnlaces(d); }
-      await actualizarLista(d);
-      clearInterval(reloj);
-      relleno.style.background = '#1a7f37'; texto.textContent = '100% ✓'; texto.style.color = '#fff';
-      estado.className = 'estado ok';
-      estado.textContent = `Subido en ${segundos()} s. Las TV lo muestran en unos minutos.`;
-      input.value = '';
-      soltarLocal(s);
-      setTimeout(() => refrescar(s), 1500);
-      setTimeout(() => refrescar(s), 90000); // la vista previa puede tardar en actualizarse
-    } catch (e) {
-      clearInterval(reloj);
-      estado.className = 'estado error'; estado.textContent = e.message;
-      barra.style.display = 'none';
-    } finally {
-      subir.disabled = false; s.borrar.disabled = false; subir.textContent = 'Subir';
-    }
-  }
+  // Carga lo que ya está guardado
+  fetch('lista.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).then(L => {
+    if (!L) return;
+    slots.forEach(sl => {
+      let id = null;
+      if (L.slots && L.slots[sl.clave]) id = L.slots[sl.clave][sl.n - 1] || null;
+      if (id) { sl.link.value = linkVisible(id); leerLink(sl); }
+    });
+  }).catch(() => {});
 
-  // ---- Usar link de Drive ----
-  async function usarLink(s){
-    s.estado.className = 'estado';
-    try {
-      const d = datos();
-      const id = idDrive(s.link.value.trim());
-      if (!id) throw new Error('Ese link no parece de Google Drive. Tiene que ser como drive.google.com/file/d/...');
-      if (s.hayArchivo && !confirm(`El Video ${s.n} de ${s.nombre} ya tiene un video subido. ¿Reemplazarlo por el de Drive?`)) return;
-      s.usarLink.disabled = true; s.usarLink.textContent = 'Guardando…';
-      if (s.hayArchivo) await borrarArchivo(d, s.archivo, 'Reemplazar ' + s.archivo + ' por link de Drive');
-      enlaces[s.archivo] = { id, fecha: new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) };
-      await guardarEnlaces(d);
-      await actualizarLista(d);
-      soltarLocal(s); s.input.value = ''; s.link.value = '';
-      s.estado.className = 'estado ok';
-      s.estado.textContent = 'Link guardado. Las TV lo muestran en unos minutos.';
-      setTimeout(() => refrescar(s), 1500);
-    } catch (e) {
-      s.estado.className = 'estado error'; s.estado.textContent = e.message;
-    } finally {
-      s.usarLink.disabled = false; s.usarLink.textContent = 'Usar link';
-    }
-  }
-
-  // ---- Borrar ----
-  async function borrarVideo(s){
-    s.estado.className = 'estado';
-    try {
-      const d = datos();
-      if (!confirm(`¿Borrar el Video ${s.n} de ${s.nombre}?`)) return;
-      s.borrar.disabled = true; s.subir.disabled = true; s.borrar.textContent = 'Borrando…';
-      if (enlaces[s.archivo]) { delete enlaces[s.archivo]; await guardarEnlaces(d); }
-      await borrarArchivo(d, s.archivo, 'Borrar ' + s.archivo);
-      await actualizarLista(d);
-      s.barra.style.display = 'none';
-      s.estado.className = 'estado ok';
-      s.estado.textContent = 'Borrado. La TV lo deja de mostrar en unos minutos.';
-      setTimeout(() => refrescar(s), 1500);
-    } catch (e) {
-      s.estado.className = 'estado error'; s.estado.textContent = e.message;
-    } finally {
-      s.borrar.disabled = false; s.subir.disabled = false; s.borrar.textContent = 'Borrar';
-    }
-  }
-
-  cargarTodo();
+  // Genera lista.json para subir a GitHub
+  $('descargar').onclick = () => {
+    const L = { v: String(Date.now()), slots: {} };
+    pantallas.forEach(([clave]) => {
+      const lista = slots.filter(x => x.clave === clave);
+      L.slots[clave] = lista.map(x => x.id || '');
+      L[clave] = lista.filter(x => x.id).map(x => urlDrive(x.id));
+    });
+    const blob = new Blob([JSON.stringify(L, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'lista.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    $('notaGuardar').textContent = '✓ lista.json descargado. Ahora subilo a GitHub con los pasos de abajo.';
+  };
 })();
 </script>
 </body>
