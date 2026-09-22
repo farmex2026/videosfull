@@ -95,6 +95,20 @@
   .espacio .medidor div.medio{background:#e0a100}
   .espacio .medidor div.lleno{background:#c62828}
   .espacio p{margin:0;font-size:14px}
+  #barraGuardar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:20;padding:14px 20px;
+       background:#fff;border-top:3px solid #e0a100;box-shadow:0 -4px 14px rgba(0,0,0,.12);
+       align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
+  #barraGuardar.ver{display:flex}
+  #barraGuardar.ok{border-top-color:#1a7f37}
+  #barraGuardar .texto{font-size:16px;font-weight:bold;color:#a15c00}
+  #barraGuardar .texto.guardado{color:#1a7f37}
+  #barraGuardar button{font-size:17px;padding:12px 26px;background:#e07b00}
+  #barraGuardar button.listo{background:#999}
+  body.cfg{padding-bottom:90px}
+  .estadoGuardado{font-size:15px;font-weight:bold;margin:10px 0 0}
+  .estadoGuardado.pendiente{color:#a15c00}
+  .estadoGuardado.guardado{color:#1a7f37}
+  .estadoGuardado.error{color:#c62828}
   .version{font-size:12px;color:#999;margin-top:30px}
   #config a{color:#1c3f8f}
 </style>
@@ -149,7 +163,7 @@
   <div class="caja">
     <h2>Guardar cambios</h2>
     <button id="guardarTV" style="font-size:17px;padding:14px 24px">Guardar en las TV</button>
-    <p class="nota" id="notaGuardar">Se guarda solo. Las TV se actualizan en unos minutos.</p>
+    <p class="estadoGuardado" id="notaGuardar">Sin cambios para guardar.</p>
     <details id="avanzado">
       <summary style="cursor:pointer;font-size:14px;color:#1c3f8f;margin-top:10px">Configurar el guardado automático</summary>
       <label style="display:block;font-size:14px;margin:12px 0 4px">Token de GitHub (se pega una sola vez)</label>
@@ -160,7 +174,11 @@
     </details>
   </div>
   <p><a href="./?menu">Volver al menú de pantallas</a></p>
-  <p class="version">Versión 21</p>
+  <div id="barraGuardar">
+    <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
+    <button id="barraBoton">Guardar en las TV</button>
+  </div>
+  <p class="version">Versión 22</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -600,8 +618,8 @@
         <div class="estado"></div>`;
       const sl = { clave, n, caja, el, previa: el.querySelector('.previa'), link: el.querySelector('.link'),
                    quitar: el.querySelector('.quitar'), estado: el.querySelector('.estado'), id: null };
-      sl.link.addEventListener('input', () => leerLink(sl));
-      sl.quitar.onclick = () => { sl.link.value = ''; leerLink(sl); };
+      sl.link.addEventListener('input', () => { leerLink(sl); hayCambios(); });
+      sl.quitar.onclick = () => { sl.link.value = ''; leerLink(sl); hayCambios(); };
       slots.push(sl);
       cont.appendChild(el);
     }
@@ -647,6 +665,8 @@
     });
     return JSON.stringify(L, null, 1);
   }
+
+  ['horActivo','horDesde','horHasta'].forEach(id => $(id).addEventListener('change', hayCambios));
 
   // Carga lo que ya está guardado
   fetch('lista.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).then(L => {
@@ -697,24 +717,60 @@
     }
   }
 
-  $('guardarTV').onclick = async () => {
-    const nota = $('notaGuardar');
+  // ---- Queda claro si hay cambios sin guardar ----
+  let pendiente = false, guardando = false;
+  function marcarEstado(estado, texto){
+    const nota = $('notaGuardar'), barra = $('barraGuardar'), bt = $('barraTexto'), bb = $('barraBoton'), gt = $('guardarTV');
+    nota.className = 'estadoGuardado ' + estado;
+    nota.textContent = texto;
+    bt.className = 'texto' + (estado === 'guardado' ? ' guardado' : '');
+    if (estado === 'pendiente') {
+      barra.className = 'ver'; bt.textContent = '● Tenés cambios sin guardar';
+      bb.className = ''; bb.textContent = 'Guardar en las TV'; bb.disabled = false;
+      gt.disabled = false; gt.textContent = 'Guardar en las TV';
+    } else if (estado === 'guardando') {
+      barra.className = 'ver'; bt.textContent = 'Guardando…';
+      bb.disabled = true; gt.disabled = true; gt.textContent = 'Guardando…';
+    } else if (estado === 'guardado') {
+      barra.className = 'ver ok'; bt.textContent = texto;
+      bb.className = 'listo'; bb.textContent = 'Guardado ✓'; bb.disabled = true;
+      gt.disabled = true; gt.textContent = 'Guardado ✓';
+      setTimeout(() => { if (!pendiente) barra.className = ''; }, 8000);
+    } else {
+      barra.className = 'ver'; bt.textContent = texto;
+      bb.className = ''; bb.disabled = false; bb.textContent = 'Reintentar';
+      gt.disabled = false; gt.textContent = 'Guardar en las TV';
+    }
+  }
+  function hayCambios(){
+    if (guardando) return;
+    pendiente = true;
+    marcarEstado('pendiente', '● Hay cambios sin guardar. Tocá "Guardar en las TV".');
+  }
+
+  async function guardar(){
     if (!token) {
       $('avanzado').open = true;
-      nota.textContent = 'Pegá el token abajo para poder guardar solo, o usá Descargar lista.';
+      marcarEstado('error', 'Falta el token. Pegalo abajo, o usá "Descargar lista".');
+      $('token').focus();
       return;
     }
-    $('guardarTV').disabled = true;
-    nota.textContent = 'Guardando…';
+    guardando = true;
+    marcarEstado('guardando', 'Guardando…');
     try {
       await guardarEnGitHub(armarLista());
-      nota.innerHTML = '✓ Guardado. Las TV se actualizan en unos minutos.';
+      pendiente = false;
+      const h = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+      marcarEstado('guardado', `✓ Guardado a las ${h}. Las TV se actualizan en unos minutos.`);
     } catch (e) {
-      nota.textContent = e.message;
+      marcarEstado('error', 'No se pudo guardar: ' + e.message);
     } finally {
-      $('guardarTV').disabled = false;
+      guardando = false;
     }
-  };
+  }
+  $('guardarTV').onclick = guardar;
+  $('barraBoton').onclick = guardar;
+  window.addEventListener('beforeunload', e => { if (pendiente) { e.preventDefault(); e.returnValue = ''; } });
 
   // Genera lista.json para bajar a mano
   $('descargar').onclick = () => {
