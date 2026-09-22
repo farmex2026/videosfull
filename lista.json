@@ -1,5 +1,5 @@
 {
- "v": "1790118099781",
+ "v": "1790118155319",
  "slots": {
   "tienda1": [
    "",
@@ -21,9 +21,9 @@
   ],
   "tienda4": [
    "K8L5hPcd6xM",
-   "",
-   "",
-   ""
+   "K8L5hPcd6xM",
+   "K8L5hPcd6xM",
+   "K8L5hPcd6xM"
   ],
   "boxes": [
    "",
@@ -37,6 +37,9 @@
   "tienda2": [],
   "tienda3": [],
   "tienda4": [
+   "K8L5hPcd6xM",
+   "K8L5hPcd6xM",
+   "K8L5hPcd6xM",
    "K8L5hPcd6xM"
   ],
   "boxes": []
