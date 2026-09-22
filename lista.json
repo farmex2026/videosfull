@@ -1,5 +1,5 @@
 {
- "v": "1790120971759",
+ "v": "1790121054072",
  "slots": {
   "tienda1": [
    "",
@@ -20,9 +20,9 @@
    ""
   ],
   "tienda4": [
-   "K8L5hPcd6xM",
-   "K8L5hPcd6xM",
-   "K8L5hPcd6xM",
+   "8t2Rzqw18Mo",
+   "",
+   "",
    ""
   ],
   "boxes": [
@@ -37,16 +37,14 @@
   "tienda2": [],
   "tienda3": [],
   "tienda4": [
-   "K8L5hPcd6xM",
-   "K8L5hPcd6xM",
-   "K8L5hPcd6xM"
+   "8t2Rzqw18Mo"
   ],
   "boxes": []
  },
  "horario": {
   "activo": true,
   "desde": "06:00",
-  "hasta": "20:50"
+  "hasta": "22:00"
  },
  "tienda1": [],
  "tienda2": [],
