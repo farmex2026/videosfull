@@ -1,5 +1,48 @@
 {
- "v": "1790049175149",
+ "v": "1790096972319",
+ "slots": {
+  "tienda1": [
+   "8t2Rzqw18Mo",
+   "2_HJvcx84QM",
+   "WenqsjUxlLg",
+   ""
+  ],
+  "tienda2": [
+   "",
+   "",
+   "",
+   ""
+  ],
+  "tienda3": [
+   "",
+   "",
+   "",
+   ""
+  ],
+  "tienda4": [
+   "",
+   "",
+   "",
+   ""
+  ],
+  "boxes": [
+   "",
+   "",
+   "",
+   ""
+  ]
+ },
+ "yt": {
+  "tienda1": [
+   "8t2Rzqw18Mo",
+   "2_HJvcx84QM",
+   "WenqsjUxlLg"
+  ],
+  "tienda2": [],
+  "tienda3": [],
+  "tienda4": [],
+  "boxes": []
+ },
  "tienda1": [],
  "tienda2": [],
  "tienda3": [],
