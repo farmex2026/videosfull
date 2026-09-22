@@ -125,7 +125,7 @@
   <p class="nota">Cada TV pasa sus videos en orden (1, 2, 3, 4) y vuelve a empezar. Los lugares vacíos se saltean.
      Después de subir o borrar, las TV se actualizan solas en unos minutos.</p>
   <p><a href="./?menu">Volver al menú de pantallas</a></p>
-  <p class="version">Versión 13</p>
+  <p class="version">Versión 14</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -446,17 +446,40 @@
         if (x.status === 401) return mal(new Error('El token no es válido o venció.'));
         if (x.status === 403) return mal(new Error('El token no tiene permiso para escribir en el repositorio.'));
         if (x.status === 404) return mal(new Error('No se encontró el repositorio. Revisá usuario y nombre.'));
-        mal(new Error('GitHub rechazó el archivo (' + x.status + '). Si es muy pesado, comprimilo.'));
+        const err = new Error(x.status === 409 || x.status === 422
+          ? 'GitHub estaba ocupado guardando otro cambio. Probá de nuevo en unos segundos.'
+          : x.status === 413 ? 'El archivo es muy pesado para GitHub. Comprimilo.'
+          : 'GitHub rechazó el archivo (' + x.status + ').');
+        err.status = x.status;
+        mal(err);
       };
       x.onerror = () => mal(new Error('Se cortó la conexión. Probá de nuevo.'));
       x.send(JSON.stringify(cuerpo));
     });
   }
+  const esperar = ms => new Promise(r => setTimeout(r, ms));
+  // Si GitHub está guardando otro cambio (error 409), espera y reintenta solo
   async function subirArchivo(d, ruta, base64, mensaje, alAvanzar){
-    const sha = await shaDe(d, ruta);
-    const cuerpo = { message: mensaje, content: base64, branch: 'main' };
-    if (sha) cuerpo.sha = sha;
-    await putConProgreso(d, ruta, cuerpo, alAvanzar);
+    for (let intento = 1; ; intento++) {
+      const sha = await shaDe(d, ruta);
+      const cuerpo = { message: mensaje, content: base64, branch: 'main' };
+      if (sha) cuerpo.sha = sha;
+      try { await putConProgreso(d, ruta, cuerpo, alAvanzar); return; }
+      catch (e) {
+        if ((e.status === 409 || e.status === 422) && intento < 5) { await esperar(1500 * intento); continue; }
+        throw e;
+      }
+    }
+  }
+  async function borrarArchivo(d, ruta, mensaje){
+    for (let intento = 1; ; intento++) {
+      const sha = await shaDe(d, ruta);
+      if (!sha) return;
+      const r = await api(d, ruta, 'DELETE', { message: mensaje, sha, branch: 'main' });
+      if (r.ok || r.status === 404) return;
+      if ((r.status === 409 || r.status === 422) && intento < 5) { await esperar(1500 * intento); continue; }
+      throw new Error('GitHub no dejó borrar el video (' + r.status + ').');
+    }
   }
   function aBase64(archivo, alAvanzar){
     return new Promise((ok, mal) => {
@@ -720,10 +743,7 @@
       if (!id) throw new Error('Ese link no parece de Google Drive. Tiene que ser como drive.google.com/file/d/...');
       if (s.hayArchivo && !confirm(`El Video ${s.n} de ${s.nombre} ya tiene un video subido. ¿Reemplazarlo por el de Drive?`)) return;
       s.usarLink.disabled = true; s.usarLink.textContent = 'Guardando…';
-      if (s.hayArchivo) {
-        const sha = await shaDe(d, s.archivo);
-        if (sha) await api(d, s.archivo, 'DELETE', { message: 'Reemplazar ' + s.archivo + ' por link de Drive', sha, branch: 'main' });
-      }
+      if (s.hayArchivo) await borrarArchivo(d, s.archivo, 'Reemplazar ' + s.archivo + ' por link de Drive');
       enlaces[s.archivo] = { id, fecha: new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) };
       await guardarEnlaces(d);
       await actualizarLista(d);
@@ -746,11 +766,7 @@
       if (!confirm(`¿Borrar el Video ${s.n} de ${s.nombre}?`)) return;
       s.borrar.disabled = true; s.subir.disabled = true; s.borrar.textContent = 'Borrando…';
       if (enlaces[s.archivo]) { delete enlaces[s.archivo]; await guardarEnlaces(d); }
-      const sha = await shaDe(d, s.archivo);
-      if (sha) {
-        const r = await api(d, s.archivo, 'DELETE', { message: 'Borrar ' + s.archivo, sha, branch: 'main' });
-        if (!r.ok) throw new Error('GitHub no dejó borrar el video (' + r.status + ').');
-      }
+      await borrarArchivo(d, s.archivo, 'Borrar ' + s.archivo);
       await actualizarLista(d);
       s.barra.style.display = 'none';
       s.estado.className = 'estado ok';
