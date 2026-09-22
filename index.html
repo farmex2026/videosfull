@@ -178,7 +178,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 23</p>
+  <p class="version">Versión 24</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -709,7 +709,6 @@
       else { sl.link.value = ''; leerLink(sl); }
     });
   }
-  listaGuardada().then(aplicarLista).catch(() => {});
 
   // ---- Guardado automático en GitHub ----
   const OWNER = 'farmex2026', REPO = 'videosfull';
@@ -802,6 +801,11 @@
   }
   $('guardarTV').onclick = guardar;
   $('barraBoton').onclick = guardar;
+
+  // Carga lo último guardado (va al final: necesita el token ya leído)
+  listaGuardada()
+    .then(L => { aplicarLista(L); if (!L) $('notaGuardar').textContent = 'Todavía no hay nada guardado.'; })
+    .catch(e => { $('notaGuardar').className = 'estadoGuardado error'; $('notaGuardar').textContent = 'No se pudo leer lo guardado: ' + e.message; });
   window.addEventListener('beforeunload', e => { if (pendiente) { e.preventDefault(); e.returnValue = ''; } });
 
   // Genera lista.json para bajar a mano
