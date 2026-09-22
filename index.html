@@ -13,7 +13,7 @@
   #menu a:focus,#menu a:hover{border-color:#ffd100;outline:none;background:#2a57c4}
   #menu a.chico{width:auto;padding:10px 18px;font-size:18px;background:transparent;color:#aaa}
   #v{display:none;width:100%;height:100%;object-fit:contain}
-  body.play{cursor:none}
+  body.quieto{cursor:none}
   #capa{display:none;position:fixed;left:50%;bottom:40px;transform:translateX(-50%);
         background:rgba(0,0,0,.85);border:2px solid #444;border-radius:12px;padding:20px 26px;
         text-align:center;cursor:default}
@@ -59,6 +59,10 @@
   .slot .info{font-size:13px;color:#333;line-height:1.4;word-break:break-word;min-height:18px}
   .slot .info small{color:#777}
   .slot input[type=file]{font-size:12px;width:100%}
+  .slot .drive{display:flex;gap:6px}
+  .slot .drive input{flex:1;min-width:0;padding:7px;font-size:12px;border:1px solid #bbb;border-radius:6px;margin:0}
+  .slot .drive button{background:#0f9d58;padding:7px 10px;font-size:12px}
+  .slot .o{font-size:11px;color:#888;text-align:center}
   .slot .botones{display:flex;gap:6px}
   .slot .botones button{flex:1}
   .slot .borrar{background:#c62828}
@@ -121,7 +125,7 @@
   <p class="nota">Cada TV pasa sus videos en orden (1, 2, 3, 4) y vuelve a empezar. Los lugares vacíos se saltean.
      Después de subir o borrar, las TV se actualizan solas en unos minutos.</p>
   <p><a href="./?menu">Volver al menú de pantallas</a></p>
-  <p class="version">Versión 12</p>
+  <p class="version">Versión 13</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -176,7 +180,9 @@
       var res = [], fallasRed = 0, i = 0;
       function siguiente(){
         if (i >= archivos.length) { fin(res, fallasRed); return; }
-        var n = i, url = archivos[n] + (ver ? '?v=' + ver : '');
+        var n = i;
+        if (/^https?:/.test(archivos[n])) { res.push({ url: archivos[n], blob: false }); i++; siguiente(); return; }
+        var url = archivos[n] + (ver ? '?v=' + ver : '');
         bajarUno(url, function(f){ if (alAvanzar) alAvanzar(n, archivos.length, f); }, function(u, st, esBlob){
           if (st == -1) { fin(res, 999); return; }
           if (u) res.push({ url: u, blob: esBlob });
@@ -331,6 +337,15 @@
       mostrarCapa();
     };
 
+    // El puntero del control se ve al moverlo y se esconde a los 3 segundos quieto
+    var timerCursor = null;
+    document.onmousemove = function(){
+      if (!actual) return;
+      document.body.className = 'play';
+      clearTimeout(timerCursor);
+      timerCursor = setTimeout(function(){ if (actual) document.body.className = 'play quieto'; }, 3000);
+    };
+
     var ATRAS = [8, 27, 461, 10009, 166];
     document.onkeydown = function(e){
       if (!actual) return;
@@ -459,13 +474,35 @@
     return new Set((await r.json()).map(f => f.name));
   }
 
+  // ---- Links de Google Drive ----
+  let enlaces = {};
+  const b64texto = t => btoa(unescape(encodeURIComponent(t)));
+  function idDrive(link){
+    const m = link.match(/\/d\/([a-zA-Z0-9_-]{20,})/) || link.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
+    return m ? m[1] : null;
+  }
+  const urlDrive = id => `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`;
+  async function leerEnlaces(){
+    const r = await fetch(`${base()}/contents/enlaces.json?ref=main`, { headers: cabeceras() });
+    if (!r.ok) return {};
+    const j = await r.json();
+    try { return JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\n/g, ''))))); } catch (e) { return {}; }
+  }
+  async function guardarEnlaces(d){
+    await subirArchivo(d, 'enlaces.json', b64texto(JSON.stringify(enlaces, null, 1)), 'Actualizar links de Drive');
+  }
+
   // Arma la lista de reproducción que leen las TV
   async function actualizarLista(d){
     const hay = await archivosDelRepo();
     const L = { v: String(Date.now()) };
     pantallas.forEach(([clave]) => {
       L[clave] = [];
-      for (let n = 1; n <= LUGARES; n++) if (hay.has(archivoDe(clave, n))) L[clave].push(archivoDe(clave, n));
+      for (let n = 1; n <= LUGARES; n++) {
+        const a = archivoDe(clave, n);
+        if (enlaces[a]) L[clave].push(urlDrive(enlaces[a].id));
+        else if (hay.has(a)) L[clave].push(a);
+      }
     });
     const json = JSON.stringify(L, null, 1);
     await subirArchivo(d, 'lista.json', btoa(unescape(encodeURIComponent(json))), 'Actualizar lista de videos');
@@ -487,6 +524,8 @@
         <div class="info"></div>
         <input type="file" accept="video/mp4">
         <div class="botones"><button class="subir">Subir</button><button class="borrar">Borrar</button></div>
+        <div class="o">o usar un video de Google Drive</div>
+        <div class="drive"><input type="text" class="link" placeholder="Pegá el link de Drive"><button class="usarLink">Usar link</button></div>
         <div class="barra"><div></div><span>0%</span></div>
         <div class="estado"></div>`;
       const s = {
@@ -495,6 +534,9 @@
         input: el.querySelector('input'), subir: el.querySelector('.subir'), borrar: el.querySelector('.borrar'),
         barra: el.querySelector('.barra'), estado: el.querySelector('.estado')
       };
+      s.link = el.querySelector('.link');
+      s.usarLink = el.querySelector('.usarLink');
+      s.usarLink.onclick = () => usarLink(s);
       s.input.onchange = () => previsualizar(s);
       s.subir.onclick = () => subirVideo(s);
       s.borrar.onclick = () => borrarVideo(s);
@@ -540,10 +582,28 @@
     s.video.src = s.local;
   }
 
-  async function mostrarSlot(s, existe){
+  async function mostrarSlot(s, hayArchivo){
+    s.hayArchivo = hayArchivo;
+    const enl = enlaces[s.archivo];
+    const existe = hayArchivo || !!enl;
     s.existe = existe;
     if (s.local) return; // hay un video elegido sin subir: no lo pisa
     s.el.classList.toggle('vacio', !existe);
+    if (enl) {
+      const texto = '<b style="color:#0f9d58">Google Drive</b><br><small>' + (enl.fecha ? 'Cargado el ' + enl.fecha : '') + '</small>';
+      s.info.innerHTML = texto;
+      s.video.onerror = () => {
+        s.info.innerHTML = texto + '<br><small style="color:#c62828">No se pudo reproducir. Revisá que esté compartido como "Cualquier persona con el enlace".</small>';
+      };
+      s.video.onloadedmetadata = () => {
+        if (!isFinite(s.video.duration)) return;
+        const d = Math.round(s.video.duration);
+        s.info.innerHTML = texto + '<br><small>Duración: ' + Math.floor(d / 60) + ':' + String(d % 60).padStart(2, '0') + '</small>';
+      };
+      s.video.src = urlDrive(enl.id);
+      return;
+    }
+    s.video.onerror = null;
     if (!existe) { s.video.removeAttribute('src'); s.video.load(); s.info.textContent = ''; return; }
     s.video.src = s.archivo + '?t=' + Date.now();
     let texto = '';
@@ -587,6 +647,7 @@
 
   async function cargarTodo(){
     mostrarEspacio();
+    try { enlaces = await leerEnlaces(); } catch (e) { enlaces = {}; }
     let hay;
     try { hay = await archivosDelRepo(); }
     catch (e) { Object.values(slots).forEach(s => { s.info.textContent = ''; }); $('notaDatos').textContent = e.message; return; }
@@ -631,6 +692,7 @@
         else mostrar('GitHub está guardando', 1);
       });
       mostrar('Avisando a las TV', 1);
+      if (enlaces[s.archivo]) { delete enlaces[s.archivo]; await guardarEnlaces(d); }
       await actualizarLista(d);
       clearInterval(reloj);
       relleno.style.background = '#1a7f37'; texto.textContent = '100% ✓'; texto.style.color = '#fff';
@@ -649,6 +711,33 @@
     }
   }
 
+  // ---- Usar link de Drive ----
+  async function usarLink(s){
+    s.estado.className = 'estado';
+    try {
+      const d = datos();
+      const id = idDrive(s.link.value.trim());
+      if (!id) throw new Error('Ese link no parece de Google Drive. Tiene que ser como drive.google.com/file/d/...');
+      if (s.hayArchivo && !confirm(`El Video ${s.n} de ${s.nombre} ya tiene un video subido. ¿Reemplazarlo por el de Drive?`)) return;
+      s.usarLink.disabled = true; s.usarLink.textContent = 'Guardando…';
+      if (s.hayArchivo) {
+        const sha = await shaDe(d, s.archivo);
+        if (sha) await api(d, s.archivo, 'DELETE', { message: 'Reemplazar ' + s.archivo + ' por link de Drive', sha, branch: 'main' });
+      }
+      enlaces[s.archivo] = { id, fecha: new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) };
+      await guardarEnlaces(d);
+      await actualizarLista(d);
+      soltarLocal(s); s.input.value = ''; s.link.value = '';
+      s.estado.className = 'estado ok';
+      s.estado.textContent = 'Link guardado. Las TV lo muestran en unos minutos.';
+      setTimeout(() => refrescar(s), 1500);
+    } catch (e) {
+      s.estado.className = 'estado error'; s.estado.textContent = e.message;
+    } finally {
+      s.usarLink.disabled = false; s.usarLink.textContent = 'Usar link';
+    }
+  }
+
   // ---- Borrar ----
   async function borrarVideo(s){
     s.estado.className = 'estado';
@@ -656,10 +745,12 @@
       const d = datos();
       if (!confirm(`¿Borrar el Video ${s.n} de ${s.nombre}?`)) return;
       s.borrar.disabled = true; s.subir.disabled = true; s.borrar.textContent = 'Borrando…';
+      if (enlaces[s.archivo]) { delete enlaces[s.archivo]; await guardarEnlaces(d); }
       const sha = await shaDe(d, s.archivo);
-      if (!sha) throw new Error('Ese video ya no existe.');
-      const r = await api(d, s.archivo, 'DELETE', { message: 'Borrar ' + s.archivo, sha, branch: 'main' });
-      if (!r.ok) throw new Error('GitHub no dejó borrar el video (' + r.status + ').');
+      if (sha) {
+        const r = await api(d, s.archivo, 'DELETE', { message: 'Borrar ' + s.archivo, sha, branch: 'main' });
+        if (!r.ok) throw new Error('GitHub no dejó borrar el video (' + r.status + ').');
+      }
       await actualizarLista(d);
       s.barra.style.display = 'none';
       s.estado.className = 'estado ok';
