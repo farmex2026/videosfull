@@ -131,17 +131,19 @@
   <div id="tvs"></div>
   <div class="caja">
     <h2>Guardar cambios</h2>
-    <button id="descargar">Descargar lista</button>
-    <p class="nota" id="notaGuardar"></p>
-    <ol class="pasos">
-      <li>Tocá <b>Descargar lista</b>. Se baja un archivo llamado <b>lista.json</b>.</li>
-      <li>Entrá a tu repositorio <b>videosfull</b> en GitHub.</li>
-      <li>Tocá <b>Add file → Upload files</b> y arrastrá el <b>lista.json</b>.</li>
-      <li>Tocá <b>Commit changes</b>. Las TV se actualizan solas en unos minutos.</li>
-    </ol>
+    <button id="guardarTV" style="font-size:17px;padding:14px 24px">Guardar en las TV</button>
+    <p class="nota" id="notaGuardar">Se guarda solo. Las TV se actualizan en unos minutos.</p>
+    <details id="avanzado">
+      <summary style="cursor:pointer;font-size:14px;color:#1c3f8f;margin-top:10px">Configurar el guardado automático</summary>
+      <label style="display:block;font-size:14px;margin:12px 0 4px">Token de GitHub (se pega una sola vez)</label>
+      <input type="text" id="token" placeholder="github_pat_..." autocomplete="off" spellcheck="false"
+             style="width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1px solid #bbb;border-radius:6px">
+      <p class="nota">Queda guardado en esta computadora. Necesita permiso <b>Contents: Read and write</b> en el repositorio <b>videosfull</b>.</p>
+      <p class="nota">Si preferís no usar token: <button id="descargar">Descargar lista</button> y subí el archivo a GitHub con <b>Add file → Upload files</b>.</p>
+    </details>
   </div>
   <p><a href="./?menu">Volver al menú de pantallas</a></p>
-  <p class="version">Versión 17</p>
+  <p class="version">Versión 18</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -548,6 +550,17 @@
     contar();
   }
 
+  function armarLista(){
+    const L = { v: String(Date.now()), slots: {}, yt: {} };
+    pantallas.forEach(([clave]) => {
+      const lista = slots.filter(x => x.clave === clave);
+      L.slots[clave] = lista.map(x => x.id || '');
+      L.yt[clave] = lista.filter(x => x.id).map(x => x.id);
+      L[clave] = [];
+    });
+    return JSON.stringify(L, null, 1);
+  }
+
   // Carga lo que ya está guardado
   fetch('lista.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).then(L => {
     if (!L) return;
@@ -559,22 +572,67 @@
     });
   }).catch(() => {});
 
-  // Genera lista.json para subir a GitHub
+  // ---- Guardado automático en GitHub ----
+  const OWNER = 'farmex2026', REPO = 'videosfull';
+  let token = '';
+  try { token = localStorage.getItem('gh_token') || ''; } catch(e) {}
+  $('token').value = token;
+  $('token').addEventListener('input', () => {
+    token = $('token').value.trim();
+    try { localStorage.setItem('gh_token', token); } catch(e) {}
+  });
+  if (!token) $('avanzado').open = true;
+
+  const esperar = ms => new Promise(r => setTimeout(r, ms));
+  async function guardarEnGitHub(json){
+    const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/lista.json`;
+    const h = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' };
+    for (let intento = 1; ; intento++) {
+      let sha = null;
+      const g = await fetch(url + '?ref=main', { headers: h });
+      if (g.status === 401) throw new Error('El token no es válido o venció.');
+      if (g.ok) sha = (await g.json()).sha;
+      else if (g.status !== 404) throw new Error('No se pudo leer el repositorio (' + g.status + ').');
+      const cuerpo = { message: 'Actualizar lista de videos', branch: 'main',
+                       content: btoa(unescape(encodeURIComponent(json))) };
+      if (sha) cuerpo.sha = sha;
+      const r = await fetch(url, { method: 'PUT', headers: h, body: JSON.stringify(cuerpo) });
+      if (r.ok) return;
+      if (r.status === 401) throw new Error('El token no es válido o venció.');
+      if (r.status === 403) throw new Error('El token no tiene permiso de escritura en videosfull.');
+      if ((r.status === 409 || r.status === 422) && intento < 5) { await esperar(1500 * intento); continue; }
+      throw new Error('GitHub rechazó el cambio (' + r.status + ').');
+    }
+  }
+
+  $('guardarTV').onclick = async () => {
+    const nota = $('notaGuardar');
+    if (!token) {
+      $('avanzado').open = true;
+      nota.textContent = 'Pegá el token abajo para poder guardar solo, o usá Descargar lista.';
+      return;
+    }
+    $('guardarTV').disabled = true;
+    nota.textContent = 'Guardando…';
+    try {
+      await guardarEnGitHub(armarLista());
+      nota.innerHTML = '✓ Guardado. Las TV se actualizan en unos minutos.';
+    } catch (e) {
+      nota.textContent = e.message;
+    } finally {
+      $('guardarTV').disabled = false;
+    }
+  };
+
+  // Genera lista.json para bajar a mano
   $('descargar').onclick = () => {
-    const L = { v: String(Date.now()), slots: {}, yt: {} };
-    pantallas.forEach(([clave]) => {
-      const lista = slots.filter(x => x.clave === clave);
-      L.slots[clave] = lista.map(x => x.id || '');
-      L.yt[clave] = lista.filter(x => x.id).map(x => x.id);
-      L[clave] = [];
-    });
-    const blob = new Blob([JSON.stringify(L, null, 1)], { type: 'application/json' });
+    const blob = new Blob([armarLista()], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'lista.json';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    $('notaGuardar').textContent = '✓ lista.json descargado. Ahora subilo a GitHub con los pasos de abajo.';
+    $('notaGuardar').textContent = '✓ lista.json descargado. Subilo a GitHub con Add file → Upload files.';
   };
 })();
 </script>
