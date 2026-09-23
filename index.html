@@ -157,6 +157,15 @@
       <label style="margin:0">Se ven desde<input type="time" id="horDesde" value="07:00" style="width:130px"></label>
       <label style="margin:0">hasta<input type="time" id="horHasta" value="22:00" style="width:130px"></label>
     </div>
+    <label style="display:block;margin-top:16px">Calidad de los videos
+      <select id="calidad" style="display:block;margin-top:4px;padding:9px;font-size:15px;border:1px solid #bbb;border-radius:6px">
+        <option value="">Automática (recomendada)</option>
+        <option value="hd1080">1080p</option>
+        <option value="hd720">720p</option>
+        <option value="large">480p</option>
+        <option value="medium">360p</option>
+      </select></label>
+    <p class="nota">Es un pedido a YouTube: si la conexión no da, baja la calidad igual. Con internet lento conviene 720p.</p>
     <p class="nota">La TV queda encendida pero con la pantalla en negro. No se apaga sola: eso lo tiene que hacer el temporizador del televisor o un enchufe inteligente.</p>
   </div>
   <div id="tvs"></div>
@@ -180,7 +189,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 27</p>
+  <p class="version">Versión 28</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -281,6 +290,12 @@
 
     // ---- YouTube ----
     var yt = null, ytListo = false, ytIds = [], ytIdx = 0, ytErrores = 0, modoYT = false, conSonido = false, esperandoAPI = [];
+    var calidad = '';
+    function pedirCalidad(){
+      if (!yt || !calidad) return;
+      try { yt.setPlaybackQuality(calidad); } catch(e){}
+      try { yt.setPlaybackQualityRange(calidad, calidad); } catch(e){}
+    }
     function cargarAPI(cb){
       if (window.YT && YT.Player) { cb(); return; }
       esperandoAPI.push(cb);
@@ -297,6 +312,10 @@
     function siguienteYT(){
       if (recargaPendiente) { location.reload(); return; }
       if (!ytIds.length) return;
+      if (ytIds.length === 1) { // un solo video: vuelve al principio sin recargar (sin pantalla negra)
+        try { yt.seekTo(0, true); yt.playVideo(); } catch(e){}
+        return;
+      }
       ytIdx = (ytIdx + 1) % ytIds.length;
       cargarYT(ytIds[ytIdx]);
     }
@@ -310,7 +329,12 @@
       $('yt').style.display = 'block';
       cargarAPI(function(){
         if (!modoYT) return;
-        if (yt && ytListo) { cargarYT(ytIds[0]); return; }
+        if (yt && ytListo) {
+          if (ytIds.length > 1) { try { yt.loadPlaylist({ playlist: ytIds }); yt.setLoop(true); if (conSonido) yt.unMute(); else yt.mute(); } catch(e){ cargarYT(ytIds[0]); } }
+          else cargarYT(ytIds[0]);
+          pedirCalidad();
+          return;
+        }
         if (yt) return;
         yt = new YT.Player('ytPlayer', {
           width: '100%', height: '100%', videoId: ytIds[0],
@@ -321,10 +345,12 @@
               ytListo = true;
               if (!modoYT) { e.target.stopVideo(); return; }
               e.target.mute(); if (conSonido) e.target.unMute();
+              if (ytIds.length > 1) { try { e.target.loadPlaylist({ playlist: ytIds }); e.target.setLoop(true); } catch(x){} }
               e.target.playVideo();
+              pedirCalidad();
             },
             onStateChange: function(e){
-              if (e.data === 1) { ytErrores = 0; marcarOk(); cargando.style.display = 'none'; } // reproduciendo
+              if (e.data === 1) { ytErrores = 0; marcarOk(); cargando.style.display = 'none'; pedirCalidad(); } // reproduciendo
               if (e.data === 0) siguienteYT();                                       // terminó
             },
             onError: function(){
@@ -439,7 +465,7 @@
         '<br><span style="font-size:17px;color:#aaa">' + textoHorario() +
         ' · ahora son las ' + (ahora.getHours() < 10 ? '0' : '') + ahora.getHours() +
         ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes() +
-        ' · Versión 27</span>';
+        ' · Versión 28</span>';
       capa.style.display = 'block';
       $('btnSeguir').focus();
       clearTimeout(timerCapa);
@@ -482,6 +508,7 @@
       pedirLista(function(L){
         if (mio !== turno) return;
         if (!L) { setTimeout(function(){ if (actual === clave && turno === mio) reproducir(clave); }, 20000); }
+        calidad = (L && L.calidad) || '';
         horario = L ? L.horario : null; arrancarHorario(); arrancarVigilancia();
         if (L && L.recargar) { try { localStorage.setItem('recargar', String(L.recargar)); } catch(e){} }
         if (L && L.yt) { versionActual = L.v; ponerYT(L.yt[clave] || []); arrancarChequeo(); return; }
@@ -512,6 +539,7 @@
         pedirLista(function(L){
           if (!L || !actual) return;
           revisarRecarga(L);
+          calidad = L.calidad || ''; pedirCalidad();
           horario = L.horario; revisarHorario();
           if (L.v === versionActual) return;
           if (L.yt) { versionActual = L.v; ponerYT(L.yt[actual] || []); return; }
@@ -688,7 +716,7 @@
   }
 
   function armarLista(){
-    const L = { v: String(Date.now()), slots: {}, yt: {},
+    const L = { v: String(Date.now()), slots: {}, yt: {}, calidad: $('calidad').value,
                 recargar: pedirRecarga ? String(Date.now()) : (guardadoPrevio && guardadoPrevio.recargar) || '',
                 horario: { activo: $('horActivo').checked, desde: $('horDesde').value || '07:00', hasta: $('horHasta').value || '22:00' } };
     pantallas.forEach(([clave]) => {
@@ -700,7 +728,7 @@
     return JSON.stringify(L, null, 1);
   }
 
-  ['horActivo','horDesde','horHasta'].forEach(id => $(id).addEventListener('change', hayCambios));
+  ['horActivo','horDesde','horHasta','calidad'].forEach(id => $(id).addEventListener('change', hayCambios));
 
   // Carga lo que ya está guardado (primero desde GitHub, que siempre está al día)
   async function listaGuardada(){
@@ -722,6 +750,7 @@
   function aplicarLista(L){
     guardadoPrevio = L;
     if (!L) return;
+    if (L.calidad !== undefined) $('calidad').value = L.calidad || '';
     if (L.horario) {
       $('horActivo').checked = !!L.horario.activo;
       if (L.horario.desde) $('horDesde').value = L.horario.desde;
