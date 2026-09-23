@@ -180,7 +180,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 26</p>
+  <p class="version">Versión 27</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -438,7 +438,8 @@
       $('capaNombre').innerHTML = (nombres[actual] || '') +
         '<br><span style="font-size:17px;color:#aaa">' + textoHorario() +
         ' · ahora son las ' + (ahora.getHours() < 10 ? '0' : '') + ahora.getHours() +
-        ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes() + '</span>';
+        ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes() +
+        ' · Versión 27</span>';
       capa.style.display = 'block';
       $('btnSeguir').focus();
       clearTimeout(timerCapa);
