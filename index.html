@@ -164,6 +164,8 @@
     <h2>Guardar cambios</h2>
     <button id="guardarTV" style="font-size:17px;padding:14px 24px">Guardar en las TV</button>
     <p class="estadoGuardado" id="notaGuardar">Sin cambios para guardar.</p>
+    <p style="margin:14px 0 0"><button id="recargarTV" style="background:#555">Recargar las TV ahora</button>
+      <span class="nota" style="margin-left:10px">Usalo cuando subís un index.html nuevo.</span></p>
     <details id="avanzado">
       <summary style="cursor:pointer;font-size:14px;color:#1c3f8f;margin-top:10px">Configurar el guardado automático</summary>
       <label style="display:block;font-size:14px;margin:12px 0 4px">Token de GitHub (se pega una sola vez)</label>
@@ -178,7 +180,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 24</p>
+  <p class="version">Versión 26</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -269,6 +271,7 @@
       liberar(vieja);
     }
     function siguienteVideo(){
+      if (recargaPendiente) { location.reload(); return; }
       if (!lista.length) return;
       if (lista.length == 1) { v.currentTime = 0; play(); return; }
       indice = (indice + 1) % lista.length;
@@ -292,6 +295,7 @@
       try { yt.loadVideoById(id); if (conSonido) yt.unMute(); else yt.mute(); } catch(e){}
     }
     function siguienteYT(){
+      if (recargaPendiente) { location.reload(); return; }
       if (!ytIds.length) return;
       ytIdx = (ytIdx + 1) % ytIds.length;
       cargarYT(ytIds[ytIdx]);
@@ -377,6 +381,22 @@
         marcarOk();
       }
     }
+    // Recarga la página sola: por pedido desde Configuración o cada 6 horas
+    var arrancoEn = new Date().getTime(), recargaPendiente = false;
+    function revisarRecarga(L){
+      if (!L) return;
+      if (L.recargar) {
+        var visto = null;
+        try { visto = localStorage.getItem('recargar'); } catch(e){}
+        if (visto !== String(L.recargar)) {
+          try { localStorage.setItem('recargar', String(L.recargar)); } catch(e){}
+          if (visto !== null) { location.reload(); return; }
+        }
+      }
+      if (new Date().getTime() - arrancoEn > 7200000) recargaPendiente = true; // cada 2 horas
+      if (recargaPendiente && enNegro) location.reload();
+    }
+
     function arrancarHorario(){
       clearInterval(timerHorario);
       timerHorario = setInterval(revisarHorario, 30000);
@@ -462,6 +482,7 @@
         if (mio !== turno) return;
         if (!L) { setTimeout(function(){ if (actual === clave && turno === mio) reproducir(clave); }, 20000); }
         horario = L ? L.horario : null; arrancarHorario(); arrancarVigilancia();
+        if (L && L.recargar) { try { localStorage.setItem('recargar', String(L.recargar)); } catch(e){} }
         if (L && L.yt) { versionActual = L.v; ponerYT(L.yt[clave] || []); arrancarChequeo(); return; }
         pararYT();
         v.style.display = 'block';
@@ -489,6 +510,7 @@
         if (actualizando || !actual) return;
         pedirLista(function(L){
           if (!L || !actual) return;
+          revisarRecarga(L);
           horario = L.horario; revisarHorario();
           if (L.v === versionActual) return;
           if (L.yt) { versionActual = L.v; ponerYT(L.yt[actual] || []); return; }
@@ -666,6 +688,7 @@
 
   function armarLista(){
     const L = { v: String(Date.now()), slots: {}, yt: {},
+                recargar: pedirRecarga ? String(Date.now()) : (guardadoPrevio && guardadoPrevio.recargar) || '',
                 horario: { activo: $('horActivo').checked, desde: $('horDesde').value || '07:00', hasta: $('horHasta').value || '22:00' } };
     pantallas.forEach(([clave]) => {
       const lista = slots.filter(x => x.clave === clave);
@@ -694,7 +717,9 @@
     return r2.ok ? r2.json() : null;
   }
 
+  let guardadoPrevio = null;
   function aplicarLista(L){
+    guardadoPrevio = L;
     if (!L) return;
     if (L.horario) {
       $('horActivo').checked = !!L.horario.activo;
@@ -774,7 +799,9 @@
     marcarEstado('pendiente', '● Hay cambios sin guardar. Tocá "Guardar en las TV".');
   }
 
-  async function guardar(){
+  let pedirRecarga = false;
+  async function guardar(recargar){
+    pedirRecarga = !!recargar;
     if (!token) {
       $('avanzado').open = true;
       marcarEstado('error', 'Falta el token. Pegalo abajo, o usá "Descargar lista".');
@@ -785,7 +812,7 @@
     marcarEstado('guardando', 'Guardando…');
     try {
       await guardarEnGitHub(armarLista());
-      pendiente = false;
+      pendiente = false; pedirRecarga = false;
       const h = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
       let extra = '';
       try {
@@ -799,8 +826,9 @@
       guardando = false;
     }
   }
-  $('guardarTV').onclick = guardar;
-  $('barraBoton').onclick = guardar;
+  $('guardarTV').onclick = () => guardar();
+  $('barraBoton').onclick = () => guardar();
+  $('recargarTV').onclick = () => guardar(true);
 
   // Carga lo último guardado (va al final: necesita el token ya leído)
   listaGuardada()
