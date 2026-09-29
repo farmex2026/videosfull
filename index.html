@@ -16,7 +16,7 @@
   #negro{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:13}
   #yt{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000}
   #yt iframe{width:100%;height:100%;border:0;pointer-events:none}
-  body.quieto{cursor:none}
+  body.quieto,body.quieto *{cursor:url("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==") 0 0,none !important}
   #capa{display:none;position:fixed;left:50%;bottom:40px;transform:translateX(-50%);
         background:rgba(0,0,0,.85);border:2px solid #444;border-radius:12px;padding:20px 26px;
         text-align:center;cursor:default}
@@ -51,6 +51,13 @@
   .caja button:disabled{background:#999;cursor:default}
   .nota{font-size:13px;color:#666;margin:10px 0 0}
 
+  .dias{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .dias label{display:inline-flex;align-items:center;gap:4px;margin:0;font-size:13px;background:#eef1f6;
+       padding:6px 10px;border-radius:6px;cursor:pointer}
+  .propio{margin-top:14px;padding-top:12px;border-top:1px dashed #d5dbe6}
+  .propio .campos{display:none;margin-top:10px}
+  .propio.abierto .campos{display:block}
+  .propio input[type=time]{width:130px}
   .tv h2{display:flex;justify-content:space-between;align-items:baseline}
   .tv h2 small{font-size:13px;font-weight:normal;color:#666}
   .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
@@ -157,6 +164,7 @@
       <label style="margin:0">Se ven desde<input type="time" id="horDesde" value="07:00" style="width:130px"></label>
       <label style="margin:0">hasta<input type="time" id="horHasta" value="22:00" style="width:130px"></label>
     </div>
+    <div class="dias" id="horDias"></div>
     <label style="display:block;margin-top:16px">Calidad de los videos
       <select id="calidad" style="display:block;margin-top:4px;padding:9px;font-size:15px;border:1px solid #bbb;border-radius:6px">
         <option value="">Automática (recomendada)</option>
@@ -189,7 +197,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 30</p>
+  <p class="version">Versión 32</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -384,18 +392,33 @@
     }
 
     // ---- Horario: fuera de hora la pantalla queda en negro ----
-    var horario = null, enNegro = false, timerHorario = null;
+    var horario = null, horarios = null, enNegro = false, timerHorario = null;
     function minutosAhora(){ var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
     function aMinutos(t){ var p = String(t || '').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
+    function horarioDeEstaTV(){
+      if (horarios && actual && horarios[actual] && horarios[actual].propio) return horarios[actual];
+      return horario;
+    }
+    function diaOk(h, dia){ return !h.dias || !h.dias.length || h.dias.indexOf(dia) > -1; }
     function dentroDeHorario(){
-      if (!horario || !horario.activo) return true;
-      var a = aMinutos(horario.desde), b = aMinutos(horario.hasta), m = minutosAhora();
-      if (a === b) return true;
-      return a < b ? (m >= a && m < b) : (m >= a || m < b);
+      var h = horarioDeEstaTV();
+      if (!h || !h.activo) return true;
+      var a = aMinutos(h.desde), b = aMinutos(h.hasta), m = minutosAhora(), hoy = new Date().getDay();
+      if (a === b) return diaOk(h, hoy);
+      if (a < b) return m >= a && m < b && diaOk(h, hoy);
+      if (m >= a) return diaOk(h, hoy);                       // cruza la medianoche
+      if (m < b) return diaOk(h, (hoy + 6) % 7);
+      return false;
     }
     function textoHorario(){
-      if (!horario || !horario.activo) return 'Sin horario: se ve las 24 horas';
-      return 'Se ve de ' + horario.desde + ' a ' + horario.hasta;
+      var h = horarioDeEstaTV();
+      if (!h || !h.activo) return 'Sin horario: se ve las 24 horas';
+      var nom = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'], dias = '';
+      if (h.dias && h.dias.length && h.dias.length < 7) {
+        for (var i = 0; i < h.dias.length; i++) dias += (dias ? ' ' : '') + nom[h.dias[i]];
+        dias = ' (' + dias + ')';
+      }
+      return 'Se ve de ' + h.desde + ' a ' + h.hasta + dias;
     }
     function revisarHorario(){
       var debeVerse = dentroDeHorario();
@@ -412,6 +435,7 @@
         if (modoYT) { if (yt && ytListo) { try { yt.playVideo(); if (conSonido) yt.unMute(); } catch(e){} } }
         else play();
         marcarOk();
+        esconderPuntero();
       }
     }
     // Recarga la página sola: por pedido desde Configuración o cada 6 horas
@@ -473,7 +497,7 @@
         '<br><span style="font-size:17px;color:#aaa">' + textoHorario() +
         ' · ahora son las ' + (ahora.getHours() < 10 ? '0' : '') + ahora.getHours() +
         ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes() +
-        ' · Versión 30</span>';
+        ' · Versión 32</span>';
       capa.style.display = 'block';
       $('btnSeguir').focus();
       clearTimeout(timerCapa);
@@ -517,7 +541,8 @@
         if (mio !== turno) return;
         if (!L) { setTimeout(function(){ if (actual === clave && turno === mio) reproducir(clave); }, 20000); }
         calidad = (L && L.calidad) || '';
-        horario = L ? L.horario : null; arrancarHorario(); arrancarVigilancia();
+        horario = L ? L.horario : null; horarios = L ? L.horarios : null;
+        arrancarHorario(); arrancarVigilancia();
         if (L && L.recargar) { try { localStorage.setItem('recargar', String(L.recargar)); } catch(e){} }
         if (L && L.yt) { versionActual = L.v; ponerYT(L.yt[clave] || []); arrancarChequeo(); return; }
         pararYT();
@@ -553,7 +578,7 @@
           if (!L || !actual) return;
           revisarRecarga(L);
           calidad = L.calidad || ''; pedirCalidad();
-          horario = L.horario; revisarHorario();
+          horario = L.horario; horarios = L.horarios; revisarHorario();
           if (L.v === versionActual) return;
           if (L.yt) { versionActual = L.v; ponerYT(L.yt[actual] || []); return; }
           var c = actual, mio = turno;
@@ -606,12 +631,21 @@
     };
 
     // El puntero del control se ve al moverlo y se esconde a los 3 segundos quieto
-    document.onmousemove = function(){
+    var ultimoMov = 0;
+    function mostrarPuntero(){
       if (!actual) return;
+      ultimoMov = new Date().getTime();
       document.body.className = 'play';
       clearTimeout(timerCursor);
-      timerCursor = setTimeout(function(){ if (actual) document.body.className = 'play quieto'; }, 3000);
-    };
+      timerCursor = setTimeout(esconderPuntero, 3000);
+    }
+    function esconderPuntero(){
+      if (actual && new Date().getTime() - ultimoMov >= 3000) document.body.className = 'play quieto';
+    }
+    document.onmousemove = mostrarPuntero;
+    document.onmousedown = mostrarPuntero;
+    // Por las dudas, cada 5 segundos vuelve a esconderlo si nadie tocó nada
+    setInterval(esconderPuntero, 5000);
 
     var ATRAS = [8, 27, 461, 10009, 166];
     document.onkeydown = function(e){
@@ -679,7 +713,17 @@
   pantallas.forEach(([clave, nombre]) => {
     const caja = document.createElement('div');
     caja.className = 'caja tv';
-    caja.innerHTML = `<h2>${nombre} <small class="cuenta">Sin videos</small></h2><div class="slots"></div>`;
+    caja.innerHTML = `<h2>${nombre} <small class="cuenta">Sin videos</small></h2><div class="slots"></div>
+      <div class="propio" data-tv="${clave}">
+        <label style="font-size:14px;margin:0"><input type="checkbox" class="propioActivo"> Horario propio para ${nombre}</label>
+        <div class="campos">
+          <div style="display:flex;gap:16px;align-items:end;flex-wrap:wrap">
+            <label style="margin:0;font-size:13px">Se ve desde<input type="time" class="pDesde" value="07:00"></label>
+            <label style="margin:0;font-size:13px">hasta<input type="time" class="pHasta" value="22:00"></label>
+          </div>
+          <div class="dias"></div>
+        </div>
+      </div>`;
     const cont = caja.querySelector('.slots');
     for (let n = 1; n <= LUGARES; n++) {
       const el = document.createElement('div');
@@ -698,6 +742,32 @@
       cont.appendChild(el);
     }
     $('tvs').appendChild(caja);
+  });
+
+  // ---- Días de la semana ----
+  const DIAS = [[1,'Lun'],[2,'Mar'],[3,'Mié'],[4,'Jue'],[5,'Vie'],[6,'Sáb'],[0,'Dom']];
+  function armarDias(cont){
+    cont.innerHTML = DIAS.map(([n, t]) => `<label><input type="checkbox" class="dia" value="${n}" checked>${t}</label>`).join('');
+    cont.querySelectorAll('input').forEach(i => i.addEventListener('change', hayCambios));
+  }
+  function leerDias(cont){
+    return Array.from(cont.querySelectorAll('input:checked')).map(i => +i.value);
+  }
+  function ponerDias(cont, dias){
+    const d = (dias && dias.length) ? dias : [0,1,2,3,4,5,6];
+    cont.querySelectorAll('input').forEach(i => { i.checked = d.indexOf(+i.value) > -1; });
+  }
+  armarDias($('horDias'));
+
+  const propios = {};
+  document.querySelectorAll('.propio').forEach(el => {
+    const clave = el.getAttribute('data-tv');
+    const p = { el, activo: el.querySelector('.propioActivo'), desde: el.querySelector('.pDesde'),
+                hasta: el.querySelector('.pHasta'), dias: el.querySelector('.dias') };
+    armarDias(p.dias);
+    p.activo.addEventListener('change', () => { el.classList.toggle('abierto', p.activo.checked); hayCambios(); });
+    [p.desde, p.hasta].forEach(i => i.addEventListener('change', hayCambios));
+    propios[clave] = p;
   });
 
   function contar(){
@@ -729,9 +799,15 @@
   }
 
   function armarLista(){
-    const L = { v: String(Date.now()), slots: {}, yt: {}, calidad: $('calidad').value,
+    const L = { v: String(Date.now()), slots: {}, yt: {}, calidad: $('calidad').value, horarios: {},
                 recargar: pedirRecarga ? String(Date.now()) : (guardadoPrevio && guardadoPrevio.recargar) || '',
-                horario: { activo: $('horActivo').checked, desde: $('horDesde').value || '07:00', hasta: $('horHasta').value || '22:00' } };
+                horario: { activo: $('horActivo').checked, desde: $('horDesde').value || '07:00',
+                           hasta: $('horHasta').value || '22:00', dias: leerDias($('horDias')) } };
+    pantallas.forEach(([clave]) => {
+      const p = propios[clave];
+      L.horarios[clave] = { propio: p.activo.checked, activo: true, desde: p.desde.value || '07:00',
+                            hasta: p.hasta.value || '22:00', dias: leerDias(p.dias) };
+    });
     pantallas.forEach(([clave]) => {
       const lista = slots.filter(x => x.clave === clave);
       L.slots[clave] = lista.map(x => x.id || '');
@@ -760,15 +836,29 @@
   }
 
   let guardadoPrevio = null;
+  let yaCargo = false;
   function aplicarLista(L){
     guardadoPrevio = L;
+    yaCargo = true;
+    $('guardarTV').disabled = false;
+    if (pendiente) return; // el usuario ya empezó a editar: no le pisamos lo que escribió
     if (!L) return;
     if (L.calidad !== undefined) $('calidad').value = L.calidad || '';
     if (L.horario) {
       $('horActivo').checked = !!L.horario.activo;
       if (L.horario.desde) $('horDesde').value = L.horario.desde;
       if (L.horario.hasta) $('horHasta').value = L.horario.hasta;
+      ponerDias($('horDias'), L.horario.dias);
     }
+    if (L.horarios) pantallas.forEach(([clave]) => {
+      const h = L.horarios[clave], p = propios[clave];
+      if (!h || !p) return;
+      p.activo.checked = !!h.propio;
+      p.el.classList.toggle('abierto', !!h.propio);
+      if (h.desde) p.desde.value = h.desde;
+      if (h.hasta) p.hasta.value = h.hasta;
+      ponerDias(p.dias, h.dias);
+    });
     slots.forEach(sl => {
       let id = null;
       if (L.slots && L.slots[sl.clave]) id = L.slots[sl.clave][sl.n - 1] || null;
@@ -818,6 +908,7 @@
     nota.className = 'estadoGuardado ' + estado;
     nota.textContent = texto;
     bt.className = 'texto' + (estado === 'guardado' ? ' guardado' : '');
+    if (!estado) { barra.className = ''; return; }
     if (estado === 'pendiente') {
       barra.className = 'ver'; bt.textContent = '● Tenés cambios sin guardar';
       bb.className = ''; bb.textContent = 'Guardar en las TV'; bb.disabled = false;
@@ -838,6 +929,7 @@
   }
   function hayCambios(){
     if (guardando) return;
+    if (!yaCargo) return;
     pendiente = true;
     marcarEstado('pendiente', '● Hay cambios sin guardar. Tocá "Guardar en las TV".');
   }
@@ -873,10 +965,13 @@
   $('barraBoton').onclick = () => guardar();
   $('recargarTV').onclick = () => guardar(true);
 
+  $('guardarTV').disabled = true;
+  marcarEstado('', 'Cargando lo guardado…');
   // Carga lo último guardado (va al final: necesita el token ya leído)
   listaGuardada()
-    .then(L => { aplicarLista(L); if (!L) $('notaGuardar').textContent = 'Todavía no hay nada guardado.'; })
-    .catch(e => { $('notaGuardar').className = 'estadoGuardado error'; $('notaGuardar').textContent = 'No se pudo leer lo guardado: ' + e.message; });
+    .then(L => { aplicarLista(L); marcarEstado('guardado', L ? 'Datos cargados. Sin cambios para guardar.' : 'Todavía no hay nada guardado.'); })
+    .catch(e => { yaCargo = true; $('guardarTV').disabled = false;
+      marcarEstado('error', 'No se pudo leer lo guardado: ' + e.message); });
   window.addEventListener('beforeunload', e => { if (pendiente) { e.preventDefault(); e.returnValue = ''; } });
 
   // Genera lista.json para bajar a mano
