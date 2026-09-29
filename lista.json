@@ -1,5 +1,5 @@
 {
- "v": "1790698784149",
+ "v": "1790698924223",
  "slots": {
   "tienda1": [
    "dgdmOvsUTcU",
@@ -114,8 +114,8 @@
   "tienda4": {
    "propio": true,
    "activo": true,
-   "desde": "13:22",
-   "hasta": "13:21",
+   "desde": "13:25",
+   "hasta": "13:24",
    "dias": [
     1,
     2,
