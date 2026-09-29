@@ -197,7 +197,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 33</p>
+  <p class="version">Versión 34</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -497,7 +497,7 @@
         '<br><span style="font-size:17px;color:#aaa">' + textoHorario() +
         ' · ahora son las ' + (ahora.getHours() < 10 ? '0' : '') + ahora.getHours() +
         ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes() +
-        ' · Versión 33</span>';
+        ' · Versión 34</span>';
       capa.style.display = 'block';
       $('btnSeguir').focus();
       clearTimeout(timerCapa);
@@ -824,7 +824,7 @@
     if (token) {
       try {
         const r = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/lista.json?ref=main&t=${Date.now()}`,
-          { cache: 'no-store', headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'Cache-Control': 'no-cache' } });
+          { cache: 'no-store', headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' } });
         if (r.ok) {
           const j = await r.json();
           return JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\n/g, '')))));
@@ -882,7 +882,7 @@
   const esperar = ms => new Promise(r => setTimeout(r, ms));
   async function guardarEnGitHub(json){
     const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/lista.json`;
-    const h = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'Cache-Control': 'no-cache' };
+    const h = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' };
     for (let intento = 1; ; intento++) {
       let sha = null;
       // el ?t= evita que GitHub devuelva un sha viejo de su caché (eso causaba el error 409)
