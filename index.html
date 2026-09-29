@@ -197,7 +197,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 32</p>
+  <p class="version">Versión 33</p>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -497,7 +497,7 @@
         '<br><span style="font-size:17px;color:#aaa">' + textoHorario() +
         ' · ahora son las ' + (ahora.getHours() < 10 ? '0' : '') + ahora.getHours() +
         ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes() +
-        ' · Versión 32</span>';
+        ' · Versión 33</span>';
       capa.style.display = 'block';
       $('btnSeguir').focus();
       clearTimeout(timerCapa);
@@ -823,8 +823,8 @@
   async function listaGuardada(){
     if (token) {
       try {
-        const r = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/lista.json?ref=main`,
-          { headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' } });
+        const r = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/lista.json?ref=main&t=${Date.now()}`,
+          { cache: 'no-store', headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'Cache-Control': 'no-cache' } });
         if (r.ok) {
           const j = await r.json();
           return JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\n/g, '')))));
@@ -882,10 +882,11 @@
   const esperar = ms => new Promise(r => setTimeout(r, ms));
   async function guardarEnGitHub(json){
     const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/lista.json`;
-    const h = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' };
+    const h = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'Cache-Control': 'no-cache' };
     for (let intento = 1; ; intento++) {
       let sha = null;
-      const g = await fetch(url + '?ref=main', { headers: h });
+      // el ?t= evita que GitHub devuelva un sha viejo de su caché (eso causaba el error 409)
+      const g = await fetch(`${url}?ref=main&t=${Date.now()}`, { headers: h, cache: 'no-store' });
       if (g.status === 401) throw new Error('El token no es válido o venció.');
       if (g.ok) sha = (await g.json()).sha;
       else if (g.status !== 404) throw new Error('No se pudo leer el repositorio (' + g.status + ').');
@@ -896,8 +897,11 @@
       if (r.ok) return;
       if (r.status === 401) throw new Error('El token no es válido o venció.');
       if (r.status === 403) throw new Error('El token no tiene permiso de escritura en videosfull.');
-      if ((r.status === 409 || r.status === 422) && intento < 5) { await esperar(1500 * intento); continue; }
-      throw new Error('GitHub rechazó el cambio (' + r.status + ').');
+      if ((r.status === 409 || r.status === 422) && intento < 8) { await esperar(1200 * intento); continue; }
+      const detalle = await r.text().catch(() => '');
+      throw new Error(r.status === 409
+        ? 'GitHub está ocupado con otro cambio. Esperá unos segundos y tocá Reintentar.'
+        : 'GitHub rechazó el cambio (' + r.status + '). ' + detalle.slice(0, 120));
     }
   }
 
