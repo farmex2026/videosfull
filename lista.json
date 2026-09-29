@@ -1,5 +1,5 @@
 {
- "v": "1790697628233",
+ "v": "1790697814577",
  "slots": {
   "tienda1": [
    "dgdmOvsUTcU",
@@ -67,9 +67,9 @@
  "calidad": "hd1080",
  "horarios": {
   "tienda1": {
-   "propio": false,
+   "propio": true,
    "activo": true,
-   "desde": "07:00",
+   "desde": "05:55",
    "hasta": "22:00",
    "dias": [
     1,
@@ -82,9 +82,9 @@
    ]
   },
   "tienda2": {
-   "propio": false,
+   "propio": true,
    "activo": true,
-   "desde": "07:00",
+   "desde": "05:55",
    "hasta": "22:00",
    "dias": [
     1,
@@ -97,9 +97,9 @@
    ]
   },
   "tienda3": {
-   "propio": false,
+   "propio": true,
    "activo": true,
-   "desde": "07:00",
+   "desde": "05:55",
    "hasta": "22:00",
    "dias": [
     1,
@@ -114,8 +114,8 @@
   "tienda4": {
    "propio": true,
    "activo": true,
-   "desde": "13:02",
-   "hasta": "13:01",
+   "desde": "13:07",
+   "hasta": "13:05",
    "dias": [
     1,
     2,
