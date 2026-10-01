@@ -1,5 +1,5 @@
 {
- "v": "1790879642300",
+ "v": "1790879658646",
  "slots": {
   "tienda1": [
    "dgdmOvsUTcU",
@@ -141,7 +141,7 @@
    ]
   }
  },
- "recargar": "1790212046704",
+ "recargar": "1790879658646",
  "horario": {
   "activo": false,
   "desde": "05:55",
