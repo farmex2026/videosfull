@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Armador de menú para pantallas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f2ee; --panel:#ffffff; --ink:#1b1b1b; --muted:#6b6b6b; --line:#dedbd2;
+  --gold:#d4a62a; --accent:#1b1b1b; --field:#fafaf7;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#141414;--panel:#1e1e1e;--ink:#eeeeea;--muted:#9a9a94;--line:#333;--field:#262626;--accent:#d4a62a}
+}
+:root[data-theme="dark"]{--bg:#141414;--panel:#1e1e1e;--ink:#eeeeea;--muted:#9a9a94;--line:#333;--field:#262626;--accent:#d4a62a}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Barlow,system-ui,sans-serif;font-size:15px}
+.wrap{display:grid;grid-template-columns:minmax(320px,430px) 1fr;gap:20px;padding:20px;max-width:1700px;margin:0 auto;align-items:start}
+@media (max-width:900px){.wrap{grid-template-columns:1fr;padding:12px}}
+.editor{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:18px}
+.preview{position:sticky;top:12px;display:flex;flex-direction:column;gap:12px}
+@media (max-width:900px){.preview{position:static;order:-1}}
+canvas{width:100%;height:auto;display:block;border-radius:6px;box-shadow:0 2px 14px rgba(0,0,0,.25);background:#000}
+h1{font-family:"Bebas Neue",Oswald,sans-serif;font-weight:400;font-size:30px;margin:0;letter-spacing:.5px}
+h2{font-family:"Bebas Neue",Oswald,sans-serif;font-weight:400;font-size:22px;margin:0 0 8px;color:var(--gold)}
+label{display:block;font-size:13px;color:var(--muted);margin:8px 0 3px}
+input[type=text],input[type=number],textarea,select{width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:6px;background:var(--field);color:var(--ink);font:inherit}
+textarea{resize:vertical;min-height:52px}
+.pick{width:100%;height:38px;padding:2px;border:1px solid var(--line);border-radius:6px;background:var(--field);cursor:pointer}
+input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.drop{border:2px dashed var(--line);border-radius:8px;padding:14px;text-align:center;cursor:pointer;color:var(--muted)}
+.drop.has{border-style:solid;border-color:var(--gold);color:var(--ink)}
+.sec{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:10px}
+.sec-head{display:flex;gap:6px;align-items:center}
+.sec-head input{font-family:"Bebas Neue",sans-serif;font-size:19px;letter-spacing:.5px}
+.item{display:grid;grid-template-columns:1fr 92px 80px 30px;gap:5px;margin-top:6px}
+.item .sub{grid-column:1 / 2}
+@media (max-width:420px){.item{grid-template-columns:1fr 80px 30px}.item .sin{display:none}}
+button{font:inherit;border-radius:6px;border:1px solid var(--line);background:var(--field);color:var(--ink);padding:7px 11px;cursor:pointer}
+button.x{padding:0;width:30px;height:36px;color:var(--muted)}
+button.primary{background:var(--gold);border-color:var(--gold);color:#111;font-weight:600;padding:11px 16px;font-size:16px}
+.small{font-size:12px;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.msg{font-size:13px;color:var(--muted);min-height:18px}
+.check{display:flex;gap:6px;align-items:center;margin-top:8px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="editor" aria-label="Datos del menú">
+    <h1>Armador de menú</h1>
+
+    <div>
+      <h2>Producto destacado</h2>
+      <div class="drop" id="drop" tabindex="0" role="button">Tocá o arrastrá la foto del producto</div>
+      <input type="file" id="file" accept="image/*" hidden>
+      <div class="row" style="grid-template-columns:1fr 1fr">
+        <div><label for="bgColor">Color de fondo</label><input type="color" id="bgColor" value="#a9c79a" class="pick"></div>
+        <div><label for="txtColor">Color de letras</label><input type="color" id="txtColor" value="#ffffff" class="pick"></div>
+      </div>
+      <button id="bgAuto" style="margin-top:6px">Tomar fondo de la foto</button>
+      <label for="light">Iluminación de la foto: <span id="lightVal">100%</span></label>
+      <input type="range" id="light" min="50" max="160" value="100" style="width:100%;accent-color:var(--gold)">
+      <label for="fade">Fundido de la foto con el fondo: <span id="fadeVal">35%</span></label>
+      <input type="range" id="fade" min="0" max="70" value="35" style="width:100%;accent-color:var(--gold)">
+      <label for="szTitle">Tamaño del nombre: <span id="szTitleVal">100%</span></label>
+      <input type="range" id="szTitle" min="40" max="200" value="100" style="width:100%;accent-color:var(--gold)">
+      <label for="szSub">Tamaño del detalle: <span id="szSubVal">100%</span></label>
+      <input type="range" id="szSub" min="40" max="200" value="100" style="width:100%;accent-color:var(--gold)">
+      <label for="szPrice">Tamaño del precio: <span id="szPriceVal">100%</span></label>
+      <input type="range" id="szPrice" min="40" max="200" value="100" style="width:100%;accent-color:var(--gold)">
+      <p class="small">Para mover el texto, arrastralo sobre la vista previa.</p>
+      <button id="posReset">Volver texto a su lugar</button>
+      <label for="hTitle">Nombre (usá Enter para cortar en 2 líneas)</label>
+      <textarea id="hTitle">SANDWICH
+DE MILANESA</textarea>
+      <label for="hSub">Detalle (una línea por renglón)</label>
+      <textarea id="hSub">CON PAPAS FRITAS
++ BEBIDA</textarea>
+      <div class="row">
+        <div><label for="hPrice">Precio</label><input type="number" id="hPrice" value="21600"></div>
+        <div><label for="hSin">Sin imp. nacionales</label><input type="number" id="hSin" placeholder="auto"></div>
+      </div>
+    </div>
+
+    <div>
+      <h2>Otros productos</h2>
+      <div id="sections"></div>
+      <button id="addSec">+ Agregar sección</button>
+    </div>
+
+    <div>
+      <h2>Ajustes</h2>
+      <div class="row">
+        <div><label for="fmt">Tamaño</label>
+          <select id="fmt"><option value="1920x1080">TV 16:9 (1920×1080)</option><option value="1360x822">Como el ejemplo (1360×822)</option><option value="1080x1920">Vertical (1080×1920)</option></select></div>
+        <div><label for="factor">Divisor sin impuestos</label><input type="number" id="factor" step="0.001" value="1.216"></div>
+      </div>
+      <p class="small">Si dejás vacío "sin imp.", se calcula como precio ÷ divisor.</p>
+      <label class="check"><input type="checkbox" id="showSin" checked> Mostrar precio sin impuestos</label>
+    </div>
+  </section>
+
+  <section class="preview" aria-label="Vista previa">
+    <canvas id="cv" width="1920" height="1080"></canvas>
+    <div class="actions">
+      <button class="primary" id="dl">Descargar imagen PNG</button>
+      <button id="reset">Volver al ejemplo</button>
+      <span class="msg" id="msg"></span>
+    </div>
+  </section>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+let pos = {dx:0, dy:0}, heroBox = null, dragging = null;
+let photo = null, photoOrig = null, photoBg = '#a9c79a', autoBg = '#3a2a1e', isCut = false, textColor = '#fff';
+
+const DEFAULT = [
+  {title:'SANDWICH', items:[{name:'MILANESAS CON PAPAS Y GASEOSA', sub:'', price:21600, sin:''}]},
+  {title:'PLATOS', items:[
+    {name:'MILANESA NAPOLITANA', sub:'Con papas', price:18150, sin:''},
+    {name:'PECHUGA DE POLLO', sub:'Con arroz', price:18150, sin:''},
+    {name:'LASAGNA', sub:'', price:18150, sin:''}]},
+  {title:'PANINIS', items:[
+    {name:'JAMÓN, QUESO, TOMATE Y HUEVO', sub:'', price:14200, sin:''},
+    {name:'PECETO, TOMATE Y MOZZARELLA', sub:'', price:14200, sin:''}]},
+  {title:'CIABATTAS', items:[
+    {name:'CIABATTA JAMÓN Y QUESO', sub:'', price:13450, sin:''},
+    {name:'CIABATTA MULTICEREAL', sub:'', price:13200, sin:''}]}
+];
+let sections = load() || clone(DEFAULT);
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function load(){try{const s=localStorage.getItem('menu-secciones');return s?JSON.parse(s):null}catch(e){return null}}
+function save(){try{localStorage.setItem('menu-secciones',JSON.stringify(sections));localStorage.setItem('menu-estilo',JSON.stringify({bg:$('bgColor').value,tx:$('txtColor').value,li:$('light').value,fa:$('fade').value,st:$('szTitle').value,ss:$('szSub').value,sp:$('szPrice').value,pos}))}catch(e){}}
+
+/* ---------- editor de secciones ---------- */
+function renderSections(){
+  const box = $('sections'); box.innerHTML = '';
+  sections.forEach((s, si) => {
+    const d = document.createElement('div'); d.className = 'sec';
+    d.innerHTML = `<div class="sec-head"><input type="text" aria-label="Título de sección" value="${esc(s.title)}"><button class="x" title="Borrar sección" aria-label="Borrar sección">✕</button></div>
+      <div class="items"></div><button class="add" style="margin-top:8px">+ Producto</button>`;
+    d.querySelector('.sec-head input').oninput = e => {s.title = e.target.value; changed()};
+    d.querySelector('.sec-head .x').onclick = () => {if(confirm('¿Borrar la sección "'+s.title+'"?')){sections.splice(si,1);renderSections();changed()}};
+    const items = d.querySelector('.items');
+    s.items.forEach((it, ii) => {
+      const r = document.createElement('div'); r.className = 'item';
+      r.innerHTML = `<input type="text" placeholder="Nombre" value="${esc(it.name)}">
+        <input type="number" placeholder="Precio" value="${it.price}">
+        <input type="number" class="sin" placeholder="sin imp." value="${it.sin}">
+        <button class="x" aria-label="Borrar producto">✕</button>
+        <input type="text" class="sub" placeholder="Detalle (opcional)" value="${esc(it.sub)}">`;
+      const [n,p,si2,,sub] = r.children;
+      n.oninput = e => {it.name = e.target.value; changed()};
+      p.oninput = e => {it.price = e.target.value; changed()};
+      si2.oninput = e => {it.sin = e.target.value; changed()};
+      sub.oninput = e => {it.sub = e.target.value; changed()};
+      r.querySelector('.x').onclick = () => {s.items.splice(ii,1); renderSections(); changed()};
+      items.appendChild(r);
+    });
+    d.querySelector('.add').onclick = () => {s.items.push({name:'',sub:'',price:'',sin:''}); renderSections(); changed()};
+    box.appendChild(d);
+  });
+}
+function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+$('addSec').onclick = () => {sections.push({title:'NUEVA SECCIÓN',items:[{name:'',sub:'',price:'',sin:''}]}); renderSections(); changed()};
+$('reset').onclick = () => {if(confirm('¿Reemplazar los productos por el ejemplo?')){sections = clone(DEFAULT); renderSections(); changed()}};
+
+/* ---------- foto ---------- */
+const drop = $('drop');
+drop.onclick = () => $('file').click();
+drop.onkeydown = e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();$('file').click()}};
+drop.ondragover = e => {e.preventDefault()};
+drop.ondrop = e => {e.preventDefault(); if(e.dataTransfer.files[0]) readPhoto(e.dataTransfer.files[0])};
+$('file').onchange = e => {if(e.target.files[0]) readPhoto(e.target.files[0])};
+function readPhoto(f){
+  const url = URL.createObjectURL(f), img = new Image();
+  img.onload = () => {photoOrig = img; photo = img; bgAutoFromPhoto(); drop.textContent = '✓ ' + f.name + ' (tocá para cambiar)'; drop.classList.add('has'); draw()};
+  img.src = url;
+}
+function bgAutoFromPhoto(){
+  if(!photo) return;
+  const k = Number($('light').value)/100, m = sampleBg(photo).match(/\d+/g).map(v => Math.min(255, Math.round(v*k)));
+  $('bgColor').value = '#' + m.map(v => v.toString(16).padStart(2,'0')).join('');
+  draw();
+}
+function rgbToHsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h=0,s=0;const l=(mx+mn)/2;
+  if(mx!==mn){const dd=mx-mn;s=l>.5?dd/(2-mx-mn):dd/(mx+mn);h=mx===r?(g-b)/dd+(g<b?6:0):mx===g?(b-r)/dd+2:(r-g)/dd+4;h*=60}return[h,s,l]}
+function lum(r,g,b){return (0.2126*r+0.7152*g+0.0722*b)/255}
+function colorLum(c){const t=document.createElement('canvas').getContext('2d');t.fillStyle=c;t.fillRect(0,0,1,1);const p=t.getImageData(0,0,1,1).data;return lum(p[0],p[1],p[2])}
+function sampleBg(img){
+  const c = document.createElement('canvas'), w = 60, h = Math.max(1, Math.round(60*img.height/img.width));
+  c.width = w; c.height = h; const x = c.getContext('2d'); x.drawImage(img,0,0,w,h);
+  const d = x.getImageData(0,0,w,Math.max(1,Math.round(h*0.12))).data; let r=0,g=0,b=0,n=0;
+  for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2];n++}
+  return `rgb(${r/n|0},${g/n|0},${b/n|0})`;
+}
+
+/* ---------- dibujo ---------- */
+const GOLD = '#e0b23a';
+const money = v => '$' + Math.round(Number(v)).toLocaleString('es-AR');
+function sinImp(price, sin){
+  if(sin !== '' && sin != null && !isNaN(sin)) return Number(sin);
+  const f = Number($('factor').value) || 1.21; return price ? Math.round(Number(price)/f) : '';
+}
+function wrap(text, maxW){
+  const words = String(text).split(/\s+/).filter(Boolean), lines = []; let cur = '';
+  for(const w of words){const t = cur ? cur+' '+w : w; if(ctx.measureText(t).width > maxW && cur){lines.push(cur); cur = w} else cur = t}
+  if(cur) lines.push(cur); return lines.length ? lines : [''];
+}
+
+function drawMenu(x, y, w, h){
+  // mide con escala k y achica hasta que entra
+  let k = 1;
+  for(let tries=0; tries<40; tries++){ if(layoutMenu(x,y,w,k,false) <= y+h) break; k *= 0.95; }
+  layoutMenu(x,y,w,k,true);
+}
+function layoutMenu(x, y, w, k, paint){
+  const U = cv.height/1080 * k * (cv.width < cv.height ? 0.9 : 1);
+  const titleS = 52*U, nameS = 38*U, subS = 27*U, priceS = 46*U, sinS = 17*U;
+  const priceCol = w*0.36, nameW = w - priceCol - 20*U;
+  const showSin = $('showSin').checked;
+  let cy = y;
+  sections.forEach((s, si) => {
+    if(si) cy += 34*U;
+    ctx.font = `${titleS}px "Bebas Neue", Impact, "Arial Narrow", sans-serif`; ctx.fillStyle = GOLD; ctx.textBaseline = 'alphabetic';
+    cy += titleS*0.85; if(paint) ctx.fillText(s.title.toUpperCase(), x, cy);
+    cy += 12*U; if(paint){ctx.fillStyle = GOLD; ctx.fillRect(x, cy, w, Math.max(2,3*U))}
+    cy += 14*U;
+    s.items.forEach(it => {
+      ctx.font = `${nameS}px Oswald, "Arial Narrow", Arial, sans-serif`; ctx.fillStyle = '#fff';
+      const lines = wrap((it.name||'').toUpperCase(), nameW);
+      const top = cy;
+      lines.forEach(l => {cy += nameS*1.02; if(paint) ctx.fillText(l, x, cy)});
+      if(it.sub){ctx.font = `${subS}px Oswald, "Arial Narrow", Arial, sans-serif`; cy += subS*1.1; if(paint) ctx.fillText(it.sub, x, cy)}
+      if(paint && it.price !== '' && it.price != null){
+        const px = x + w - priceCol, py = top + nameS*1.0;
+        ctx.font = `${priceS}px "Bebas Neue", Impact, "Arial Narrow", sans-serif`; ctx.fillStyle = '#fff';
+        const p = money(it.price); ctx.fillText(p, px, py);
+        if(showSin){const sv = sinImp(it.price, it.sin);
+          if(sv !== ''){ctx.font = `${sinS}px Oswald, "Arial Narrow", Arial, sans-serif`; ctx.fillText('*'+money(sv), px + measure(p, priceS) + 10*U, py)}}
+      }
+      cy += 16*U;
+    });
+  });
+  return cy;
+}
+function measure(t, s){const f = ctx.font; ctx.font = `${s}px "Bebas Neue", Impact, "Arial Narrow", sans-serif`; const w = ctx.measureText(t).width; ctx.font = f; return w}
+
+function drawHero(x, y, w, h){
+  const bg = $('bgColor').value;
+  ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+  ctx.fillStyle = bg; ctx.fillRect(x, y, w, h);
+  if(photo){
+    const rh = h*0.62, ry = y + h - rh;
+    const s = Math.max(w/photo.width, rh/photo.height), pw = photo.width*s, ph = photo.height*s;
+    ctx.filter = `brightness(${$('light').value}%)`;
+    ctx.drawImage(photo, x + (w-pw)/2, y + h - ph, pw, ph);
+    ctx.filter = 'none';
+    const q = [1,3,5].map(i => parseInt(bg.slice(i,i+2),16));
+    const top = Math.max(y, y + h - ph), fade = ph * Number($('fade').value)/100;
+    const g = ctx.createLinearGradient(0, top, 0, top + fade);
+    g.addColorStop(0, `rgba(${q},1)`); g.addColorStop(1, `rgba(${q},0)`);
+    ctx.fillStyle = g; ctx.fillRect(x, top - 1, w, fade + 1);
+  } else {
+    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.font = `${30*cv.height/1080}px Oswald, "Arial Narrow", Arial, sans-serif`;
+    ctx.fillText('Cargá la foto del producto', x + w*0.08, y + h*0.75);
+  }
+  ctx.restore();
+  textColor = $('txtColor').value;
+  const U = cv.height/1080 * (cv.width < cv.height ? 0.8 : 1);
+  const kT = $('szTitle').value/100, kS = $('szSub').value/100, kP = $('szPrice').value/100;
+  const pad = w*0.06, tx = x + pad + pos.dx*w; let cy = y + 30*U + pos.dy*h; const y0 = cy;
+  ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+  const tS = 92*U*kT; ctx.fillStyle = textColor; ctx.font = `${tS}px "Bebas Neue", Impact, "Arial Narrow", sans-serif`;
+  const tl = $('hTitle').value.toUpperCase().split('\n').filter(l=>l.trim());
+  tl.forEach((l, i) => {
+    cy += tS*0.92; fitText(l, tx, cy, w*1.5, tS);
+    if(i === 0 && tl.length > 1){cy += 14*U*kT; ctx.fillStyle = GOLD; ctx.fillRect(tx, cy, w*0.62*kT, Math.max(2,3*U)); ctx.fillStyle = textColor; cy += 8*U*kT}
+  });
+  cy += 30*U*kS; const sS = 34*U*kS;
+  $('hSub').value.toUpperCase().split('\n').filter(l=>l.trim()).forEach(l => {
+    cy += sS*1.05; ctx.font = `${sS}px "Bebas Neue", Impact, "Arial Narrow", sans-serif`;
+    if(l.trim().startsWith('+')){ctx.fillStyle = GOLD; ctx.fillText('+', tx, cy); ctx.fillStyle=textColor; ctx.fillText(l.trim().slice(1).trim(), tx+sS*0.6, cy)}
+    else {ctx.fillStyle = textColor; ctx.fillText(l, tx, cy)}
+  });
+  const pv = $('hPrice').value;
+  if(pv){
+    const pS = 120*U*kP; cy += pS*0.95; ctx.font = `${pS}px "Bebas Neue", Impact, "Arial Narrow", sans-serif`; ctx.fillStyle = textColor;
+    ctx.fillText(money(pv), tx, cy);
+    if($('showSin').checked){const sv = sinImp(pv, $('hSin').value);
+      if(sv !== ''){cy += 26*U*kP; ctx.font = `${17*U*Math.max(kP,0.8)}px Oswald, "Arial Narrow", Arial, sans-serif`; ctx.fillText('PRECIO SIN IMPUESTOS NACIONALES *' + money(sv), tx, cy)}}
+  }
+  ctx.restore();
+  heroBox = {x, y, w, h, x0: tx - 10*U, y0: y0 - 10*U, x1: tx + w*0.8, y1: cy + 20*U};
+  if(dragging){ctx.save(); ctx.setLineDash([12*U,8*U]); ctx.strokeStyle = GOLD; ctx.lineWidth = 3*U; ctx.strokeRect(heroBox.x0, heroBox.y0, heroBox.x1-heroBox.x0, heroBox.y1-heroBox.y0); ctx.restore()}
+}
+function fitText(t, x, y, maxW, size){
+  let s = size; ctx.font = `${s}px "Bebas Neue", Impact, "Arial Narrow", sans-serif`;
+  while(ctx.measureText(t).width > maxW && s > 20){s -= 2; ctx.font = `${s}px "Bebas Neue", Impact, "Arial Narrow", sans-serif`}
+  ctx.fillText(t, x, y);
+}
+
+function draw(){
+  const [W, H] = $('fmt').value.split('x').map(Number);
+  if(cv.width !== W || cv.height !== H){cv.width = W; cv.height = H}
+  ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+  if(W >= H){
+    const half = W/2;
+    drawMenu(W*0.035, H*0.04, half - W*0.07, H*0.92);
+    drawHero(half, 0, half, H);
+  } else {
+    const heroH = H*0.45;
+    drawHero(0, 0, W, heroH);
+    drawMenu(W*0.07, heroH + H*0.03, W*0.86, H - heroH - H*0.06);
+  }
+}
+let raf; function changed(){save(); cancelAnimationFrame(raf); raf = requestAnimationFrame(draw)}
+['hTitle','hSub','hPrice','hSin','factor','fmt','showSin','bgColor','txtColor','light','fade','szTitle','szSub','szPrice'].forEach(id => $(id).addEventListener('input', changed));
+
+/* ---------- descarga ---------- */
+$('dl').onclick = async () => {
+  const msg = $('msg'); msg.textContent = 'Preparando…';
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  const name = ($('hTitle').value.split('\n')[0] || 'menu').trim().toLowerCase().replace(/[^a-z0-9áéíóúñ]+/gi,'-') + '.png';
+  try{
+    const dl = window.claude ? await window.claude.use('downloads') : null;
+    if(dl){ await dl.save({filename:name, data:blob}); msg.textContent = 'Imagen guardada.'; return; }
+  }catch(e){ if(e && e.code === 'declined'){msg.textContent = 'Descarga cancelada.'; return} }
+  try{ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); msg.textContent = 'Imagen descargada.'; }
+  catch(e){ msg.textContent = 'No se pudo descargar acá.'; }
+};
+
+$('bgAuto').onclick = bgAutoFromPhoto;
+['szTitle','szSub','szPrice'].forEach(k => $(k).addEventListener('input', () => $(k+'Val').textContent = $(k).value + '%'));
+$('posReset').onclick = () => {pos = {dx:0, dy:0}; changed()};
+function cvPoint(e){const r = cv.getBoundingClientRect(); return {x:(e.clientX-r.left)*cv.width/r.width, y:(e.clientY-r.top)*cv.height/r.height}}
+function inBox(p, b){return b && p.x>=b.x0 && p.x<=b.x1 && p.y>=b.y0 && p.y<=b.y1}
+cv.style.touchAction = 'none';
+cv.addEventListener('pointerdown', e => {const p = cvPoint(e); if(!inBox(p, heroBox)) return;
+  dragging = {sx:p.x, sy:p.y, dx:pos.dx, dy:pos.dy}; cv.setPointerCapture(e.pointerId); draw()});
+cv.addEventListener('pointermove', e => {const p = cvPoint(e);
+  if(!dragging){cv.style.cursor = inBox(p, heroBox) ? 'move' : 'default'; return}
+  pos.dx = dragging.dx + (p.x-dragging.sx)/heroBox.w; pos.dy = dragging.dy + (p.y-dragging.sy)/heroBox.h;
+  cancelAnimationFrame(raf); raf = requestAnimationFrame(draw)});
+const endDrag = () => {if(dragging){dragging = null; changed()}};
+cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
+$('fade').addEventListener('input', () => $('fadeVal').textContent = $('fade').value + '%');
+$('light').addEventListener('input', () => $('lightVal').textContent = $('light').value + '%');
+try{const e=JSON.parse(localStorage.getItem('menu-estilo'));if(e){$('bgColor').value=e.bg;$('txtColor').value=e.tx;$('light').value=e.li;$('lightVal').textContent=e.li+'%';[['fade',e.fa],['szTitle',e.st],['szSub',e.ss],['szPrice',e.sp]].forEach(([k,v])=>{if(v){$(k).value=v;$(k+'Val').textContent=v+'%'}});if(e.pos)pos=e.pos}}catch(e){}
+renderSections();
+document.fonts.load('40px "Bebas Neue"').then(()=>document.fonts.load('40px Oswald')).finally(draw);
+draw();
+</script>
+</body>
+</html>

@@ -13,6 +13,23 @@
   #menu a:focus,#menu a:hover{border-color:#ffd100;outline:none;background:#2a57c4}
   #menu a.chico{width:auto;padding:10px 18px;font-size:18px;background:transparent;color:#aaa}
   #v{display:none;width:100%;height:100%;object-fit:contain}
+  #promo{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#111;z-index:8;overflow:hidden}
+  #promoFondo{position:absolute;top:-6%;left:-6%;width:112%;height:112%;background-size:cover;background-position:center;
+       filter:blur(28px) brightness(.45)}
+  #promoCaja{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;gap:3vw;padding:4vh 4vw;box-sizing:border-box}
+  #promoImg{max-height:84vh;max-width:50vw;border-radius:1.4vw;object-fit:contain;background:#000}
+  #promoTexto{flex:1;min-width:0;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+  #promoEtiqueta{display:inline-block;background:#A32D2D;padding:.6vh 1.4vw;border-radius:.6vw;font-size:2.4vh;letter-spacing:.1vw}
+  #promoEtiqueta:empty{display:none}
+  #promoTitulo{font-size:7vh;font-weight:bold;line-height:1.05;margin-top:1.4vh}
+  #promoDetalle{font-size:3vh;color:#d8d8d8;margin-top:1vh}
+  #promoPrecios{margin-top:3vh;display:flex;align-items:baseline;gap:2vw;flex-wrap:wrap}
+  #promoAntes{font-size:4vh;color:#c9c9c9;text-decoration:line-through}
+  #promoAntes:empty{display:none}
+  #promoAhora{font-size:12vh;font-weight:bold;color:#ffd100;line-height:1}
+  #promo.full #promoImg{position:absolute;top:0;left:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;border-radius:0}
+  #promo.full #promoCaja{align-items:flex-end;padding:0}
+  #promo.full #promoTexto{position:relative;width:100%;padding:3vh 4vw;background:linear-gradient(transparent,rgba(0,0,0,.8) 35%)}
   #negro{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:13}
   #yt{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000}
   #yt iframe{width:100%;height:100%;border:0;pointer-events:none}
@@ -116,6 +133,26 @@
   .estadoGuardado.pendiente{color:#a15c00}
   .estadoGuardado.guardado{color:#1a7f37}
   .estadoGuardado.error{color:#c62828}
+  .promo{border:1px solid #e0e5ee;border-radius:10px;padding:12px;margin-bottom:12px;background:#f9fafc}
+  .promo .fila1{display:flex;gap:12px;flex-wrap:wrap}
+  .promo .fotoCaja{width:150px}
+  .promo .foto{width:150px;aspect-ratio:4/3;background:#e3e7ee;border-radius:8px;object-fit:cover;display:block}
+  .promo .sinFoto{width:150px;aspect-ratio:4/3;border:2px dashed #c5cdda;border-radius:8px;display:flex;
+       align-items:center;justify-content:center;color:#999;font-size:12px;box-sizing:border-box}
+  .promo .campos{flex:1;min-width:220px;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+  .promo input,.promo select{width:100%;box-sizing:border-box;padding:8px;font-size:13px;border:1px solid #bbb;border-radius:6px}
+  .promo .ancho{grid-column:1/-1}
+  .promo label{font-size:11px;color:#666;margin:0}
+  .promo .tvs{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .promo .tvs label{display:inline-flex;align-items:center;gap:4px;background:#eef1f6;padding:5px 9px;border-radius:6px;font-size:12px;cursor:pointer}
+  .promo .pie{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .promo .pie .estado{flex:1}
+  .pestanas{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+  .pest{padding:10px 18px;font-size:15px;border:0;border-radius:8px 8px 0 0;background:#dde3ee;color:#33415c;cursor:pointer}
+  .pest.activa{background:#1c3f8f;color:#fff}
+  .panelPest{display:none}
+  .panelPest.activa{display:block}
+  #marcoFoto{width:100%;height:1150px;border:1px solid #d5dbe6;border-radius:8px;background:#fff}
   .version{font-size:12px;color:#999;margin-top:30px}
   #config a{color:#1c3f8f}
 </style>
@@ -144,12 +181,37 @@
 
 <video id="v" autoplay muted playsinline></video>
 <div id="yt"><div id="ytPlayer"></div></div>
+<div id="promo">
+  <div id="promoFondo"></div>
+  <div id="promoCaja">
+    <img id="promoImg" alt="">
+    <div id="promoTexto">
+      <div id="promoEtiqueta"></div>
+      <div id="promoTitulo"></div>
+      <div id="promoDetalle"></div>
+      <div id="promoPrecios"><span id="promoAntes"></span><span id="promoAhora"></span></div>
+    </div>
+  </div>
+</div>
 <div id="negro"></div>
 <div id="msg"></div>
 <div id="cargando"></div>
 
 <div id="config">
   <h1>Configuración de pantallas</h1>
+  <div class="pestanas">
+    <button class="pest activa" data-pest="pantallas">Pantallas y promos</button>
+    <button class="pest" data-pest="foto">Foto vencimiento</button>
+  </div>
+  <div id="pestFoto" class="panelPest">
+    <div class="caja">
+      <h2>Armador de placas</h2>
+      <p class="nota" style="margin:0 0 12px">Armá acá la placa, descargala como PNG y después cargala como foto en una promo o subila a YouTube como video.</p>
+      <iframe id="marcoFoto" src="fotovencimiento.html" title="Armador de placas"></iframe>
+      <p class="nota"><a href="fotovencimiento.html" target="_blank">Abrir en una pestaña aparte</a></p>
+    </div>
+  </div>
+  <div id="pestPantallas" class="panelPest activa">
   <div class="caja">
     <h2>Cómo funciona</h2>
     <p class="nota" style="margin:0;font-size:14px;line-height:1.6">
@@ -178,6 +240,11 @@
   </div>
   <div id="tvs"></div>
   <div class="caja">
+    <h2>Promos en pantalla <small style="font-size:13px;font-weight:normal;color:#666">se muestran entre los videos</small></h2>
+    <div id="promos"></div>
+    <p class="nota">La fecha de vencimiento es solo para vos: en la TV no se muestra, pero el día que vence el cartel se saca solo.</p>
+  </div>
+  <div class="caja">
     <h2>Guardar cambios</h2>
     <button id="guardarTV" style="font-size:17px;padding:14px 24px">Guardar en las TV</button>
     <p class="estadoGuardado" id="notaGuardar">Sin cambios para guardar.</p>
@@ -197,7 +264,8 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 34</p>
+  <p class="version">Versión 37</p>
+  </div>
 </div>
 
 <!-- Script de las TV (compatible con navegadores viejos) -->
@@ -319,13 +387,16 @@
     }
     function siguienteYT(){
       if (recargaPendiente) { location.reload(); return; }
-      if (!ytIds.length) return;
-      if (ytIds.length === 1) { // un solo video: vuelve al principio sin recargar (sin pantalla negra)
-        try { yt.seekTo(0, true); yt.playVideo(); } catch(e){}
-        return;
-      }
-      ytIdx = (ytIdx + 1) % ytIds.length;
-      cargarYT(ytIds[ytIdx]);
+      if (!ytIds.length || enPromo) return;
+      mostrarPromo(function(){
+        if (!actual || !ytIds.length) return;
+        if (ytIds.length === 1 && !promosDeEstaTV().length) { // un solo video y sin promos: sin recargar
+          try { yt.seekTo(0, true); yt.playVideo(); } catch(e){}
+          return;
+        }
+        if (ytIds.length > 1) ytIdx = (ytIdx + 1) % ytIds.length;
+        cargarYT(ytIds[ytIdx]);
+      });
     }
     function ponerYT(ids){
       modoYT = true;
@@ -338,7 +409,7 @@
       cargarAPI(function(){
         if (!modoYT) return;
         if (yt && ytListo) {
-          if (ytIds.length > 1) { try { yt.loadPlaylist({ playlist: ytIds }); yt.setLoop(true); if (conSonido) yt.unMute(); else yt.mute(); } catch(e){ cargarYT(ytIds[0]); } }
+          if (ytIds.length > 1 && !promos.length) { try { yt.loadPlaylist({ playlist: ytIds }); yt.setLoop(true); if (conSonido) yt.unMute(); else yt.mute(); } catch(e){ cargarYT(ytIds[0]); } }
           else cargarYT(ytIds[0]);
           pedirCalidad();
           return;
@@ -353,17 +424,17 @@
               ytListo = true;
               if (!modoYT) { e.target.stopVideo(); return; }
               e.target.mute(); if (conSonido) e.target.unMute();
-              if (ytIds.length > 1) { try { e.target.loadPlaylist({ playlist: ytIds }); e.target.setLoop(true); } catch(x){} }
+              if (ytIds.length > 1 && !promos.length) { try { e.target.loadPlaylist({ playlist: ytIds }); e.target.setLoop(true); } catch(x){} }
               e.target.playVideo();
               pedirCalidad();
             },
             onStateChange: function(e){
               if (e.data === 1) { ytErrores = 0; marcarOk(); cargando.style.display = 'none'; pedirCalidad(); } // reproduciendo
               if (e.data === 0) siguienteYT();                                       // terminó
-              if (e.data === 2 && !enNegro) setTimeout(function(){                   // quedó en pausa
-                if (!enNegro && modoYT && yt && yt.getPlayerState && yt.getPlayerState() === 2) { try { yt.playVideo(); } catch(x){} }
+              if (e.data === 2 && !enNegro && !enPromo) setTimeout(function(){        // quedó en pausa
+                if (!enNegro && !enPromo && modoYT && yt && yt.getPlayerState && yt.getPlayerState() === 2) { try { yt.playVideo(); } catch(x){} }
               }, 2000);
-              if (e.data === 5 && !enNegro) { try { e.target.playVideo(); } catch(x){} } // listo pero sin arrancar
+              if (e.data === 5 && !enNegro && !enPromo) { try { e.target.playVideo(); } catch(x){} } // listo pero sin arrancar
             },
             onError: function(){
               ytErrores++;
@@ -393,6 +464,7 @@
 
     // ---- Horario: fuera de hora la pantalla queda en negro ----
     var horario = null, horarios = null, enNegro = false, timerHorario = null;
+    var promos = [], promoIdx = 0, enPromo = false, timerPromo = null;
     function minutosAhora(){ var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
     function aMinutos(t){ var p = String(t || '').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
     function horarioDeEstaTV(){
@@ -426,6 +498,7 @@
       enNegro = !debeVerse;
       $('negro').style.display = enNegro ? 'block' : 'none';
       if (enNegro) {
+        terminarPromo();
         aviso.style.display = 'none';
         msg.style.display = 'none';
         cargando.style.display = 'none';
@@ -475,7 +548,7 @@
       }
     }
     function vigilar(){
-      if (!actual || enNegro) return;
+      if (!actual || enNegro || enPromo) { marcarOk(); return; }
       var ahora = new Date().getTime();
       if (modoYT) {
         var est = (yt && ytListo && yt.getPlayerState) ? yt.getPlayerState() : -1;
@@ -491,13 +564,65 @@
     }
     if (window.addEventListener) window.addEventListener('online', function(){ if (actual) { fallasSeguidas = 0; reintentar(); } });
 
+    // ---- Carteles de promo entre los videos ----
+    function hoyTexto(){
+      var d = new Date(), m = d.getMonth() + 1, dd = d.getDate();
+      return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
+    }
+    function promosDeEstaTV(){
+      var r = [];
+      for (var i = 0; i < promos.length; i++) {
+        var p = promos[i];
+        if (!p || !p.img) continue;
+        if (p.hasta && p.hasta < hoyTexto()) continue;                       // se saca sola al vencer
+        if (p.tvs && p.tvs.length && p.tvs.indexOf(actual) < 0) continue;
+        r.push(p);
+      }
+      return r;
+    }
+    function terminarPromo(){
+      clearTimeout(timerPromo);
+      enPromo = false;
+      $('promo').style.display = 'none';
+      $('promo').className = '';
+    }
+    function mostrarPromo(cb){
+      var lista2 = promosDeEstaTV();
+      if (!lista2.length || enNegro) { cb(); return; }
+      var p = lista2[promoIdx % lista2.length];
+      promoIdx++;
+      enPromo = true;
+      var caja = $('promo'), img = $('promoImg');
+      $('promoEtiqueta').innerHTML = p.etiqueta || '';
+      $('promoTitulo').innerHTML = p.titulo || '';
+      $('promoDetalle').innerHTML = p.detalle || '';
+      $('promoAntes').innerHTML = p.antes || '';
+      $('promoAhora').innerHTML = p.ahora || '';
+      var url = p.img + (versionActual ? '?v=' + versionActual : '');
+      $('promoFondo').style.backgroundImage = 'url("' + url + '")';
+      img.onload = function(){
+        caja.className = (img.naturalWidth >= img.naturalHeight * 1.2) ? 'full' : '';
+      };
+      img.onerror = function(){ terminarPromo(); cb(); };
+      img.src = url;
+      if (modoYT && yt && ytListo) { try { yt.pauseVideo(); } catch(e){} }
+      $('yt').style.display = 'none';
+      caja.style.display = 'block';
+      clearTimeout(timerPromo);
+      timerPromo = setTimeout(function(){
+        terminarPromo();
+        if (modoYT) $('yt').style.display = 'block';
+        cb();
+      }, (p.seg ? +p.seg : 8) * 1000);
+    }
+
     function mostrarCapa(){
       var ahora = new Date();
       $('capaNombre').innerHTML = (nombres[actual] || '') +
         '<br><span style="font-size:17px;color:#aaa">' + textoHorario() +
         ' · ahora son las ' + (ahora.getHours() < 10 ? '0' : '') + ahora.getHours() +
         ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes() +
-        ' · Versión 34</span>';
+        ' · Versión 36</span>';
       capa.style.display = 'block';
       $('btnSeguir').focus();
       clearTimeout(timerCapa);
@@ -511,6 +636,7 @@
       clearInterval(intervalo);
       clearInterval(timerHorario);
       clearInterval(timerVigila);
+      terminarPromo();
       enNegro = false; $('negro').style.display = 'none';
       cortarDescargas();
       v.pause(); v.removeAttribute('src'); try{ v.load(); }catch(e){}
@@ -541,6 +667,7 @@
         if (mio !== turno) return;
         if (!L) { setTimeout(function(){ if (actual === clave && turno === mio) reproducir(clave); }, 20000); }
         calidad = (L && L.calidad) || '';
+        promos = (L && L.promos) || [];
         horario = L ? L.horario : null; horarios = L ? L.horarios : null;
         arrancarHorario(); arrancarVigilancia();
         if (L && L.recargar) { try { localStorage.setItem('recargar', String(L.recargar)); } catch(e){} }
@@ -578,6 +705,7 @@
           if (!L || !actual) return;
           revisarRecarga(L);
           calidad = L.calidad || ''; pedirCalidad();
+          promos = L.promos || [];
           horario = L.horario; horarios = L.horarios; revisarHorario();
           if (L.v === versionActual) return;
           if (L.yt) { versionActual = L.v; ponerYT(L.yt[actual] || []); return; }
@@ -803,6 +931,17 @@
                 recargar: pedirRecarga ? String(Date.now()) : (guardadoPrevio && guardadoPrevio.recargar) || '',
                 horario: { activo: $('horActivo').checked, desde: $('horDesde').value || '07:00',
                            hasta: $('horHasta').value || '22:00', dias: leerDias($('horDias')) } };
+    L.promos = promosUI.filter(u => u.tieneFoto && (u.titulo.value.trim() || u.ahora.value.trim())).map(u => ({
+      img: u.ruta,
+      titulo: u.titulo.value.trim(),
+      detalle: u.detalle.value.trim(),
+      antes: u.antes.value.trim(),
+      ahora: u.ahora.value.trim(),
+      etiqueta: u.etiqueta.value,
+      hasta: u.hasta.value || '',
+      seg: +u.seg.value || 8,
+      tvs: Array.from(u.tvs.querySelectorAll('input:checked')).map(c => c.value)
+    }));
     pantallas.forEach(([clave]) => {
       const p = propios[clave];
       L.horarios[clave] = { propio: p.activo.checked, activo: true, desde: p.desde.value || '07:00',
@@ -844,6 +983,20 @@
     if (pendiente) return; // el usuario ya empezó a editar: no le pisamos lo que escribió
     if (!L) return;
     if (L.calidad !== undefined) $('calidad').value = L.calidad || '';
+    (L.promos || []).forEach((p, i) => {
+      const u = promosUI[i];
+      if (!u) return;
+      u.titulo.value = p.titulo || ''; u.detalle.value = p.detalle || '';
+      u.antes.value = p.antes || ''; u.ahora.value = p.ahora || '';
+      u.etiqueta.value = p.etiqueta || ''; u.hasta.value = p.hasta || ''; u.seg.value = p.seg || 8;
+      u.tvs.querySelectorAll('input').forEach(c => { c.checked = !p.tvs || !p.tvs.length || p.tvs.indexOf(c.value) > -1; });
+      if (p.img) {
+        u.ruta = p.img; u.tieneFoto = true;
+        u.img.src = p.img + '?t=' + Date.now();
+        u.img.style.display = 'block'; u.sinFoto.style.display = 'none';
+        u.estado.textContent = p.hasta ? 'Se muestra hasta el ' + p.hasta : 'Activa';
+      }
+    });
     if (L.horario) {
       $('horActivo').checked = !!L.horario.activo;
       if (L.horario.desde) $('horDesde').value = L.horario.desde;
@@ -880,8 +1033,9 @@
   if (!token) $('avanzado').open = true;
 
   const esperar = ms => new Promise(r => setTimeout(r, ms));
-  async function guardarEnGitHub(json){
-    const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/lista.json`;
+  async function guardarEnGitHub(json){ return putArchivo('lista.json', btoa(unescape(encodeURIComponent(json))), 'Actualizar lista de videos'); }
+  async function putArchivo(ruta, contenido, mensaje){
+    const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${ruta}`;
     const h = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' };
     for (let intento = 1; ; intento++) {
       let sha = null;
@@ -890,8 +1044,7 @@
       if (g.status === 401) throw new Error('El token no es válido o venció.');
       if (g.ok) sha = (await g.json()).sha;
       else if (g.status !== 404) throw new Error('No se pudo leer el repositorio (' + g.status + ').');
-      const cuerpo = { message: 'Actualizar lista de videos', branch: 'main',
-                       content: btoa(unescape(encodeURIComponent(json))) };
+      const cuerpo = { message: mensaje, branch: 'main', content: contenido };
       if (sha) cuerpo.sha = sha;
       const r = await fetch(url, { method: 'PUT', headers: h, body: JSON.stringify(cuerpo) });
       if (r.ok) return;
@@ -902,6 +1055,93 @@
       throw new Error(r.status === 409
         ? 'GitHub está ocupado con otro cambio. Esperá unos segundos y tocá Reintentar.'
         : 'GitHub rechazó el cambio (' + r.status + '). ' + detalle.slice(0, 120));
+    }
+  }
+
+  // ---- Promos ----
+  const MAXPROMOS = 6;
+  const ETIQUETAS = ['', 'Solo hoy', 'Últimas unidades', 'Oferta', 'Precio especial', '2x1'];
+  const promosUI = [];
+  for (let i = 0; i < MAXPROMOS; i++) {
+    const el = document.createElement('div');
+    el.className = 'promo';
+    el.innerHTML = `<div class="fila1">
+        <div class="fotoCaja">
+          <img class="foto" style="display:none" alt="">
+          <div class="sinFoto">Sin foto</div>
+          <input type="file" accept="image/*" style="margin-top:8px;border:0;padding:0;font-size:11px">
+        </div>
+        <div class="campos">
+          <div class="ancho"><label>Producto</label><input type="text" class="titulo" placeholder="Mix de vegetales"></div>
+          <div class="ancho"><label>Detalle</label><input type="text" class="detalle" placeholder="mozzarella, rúcula y cherrys · 270 g"></div>
+          <div><label>Precio antes</label><input type="text" class="antes" placeholder="$4.200"></div>
+          <div><label>Precio ahora</label><input type="text" class="ahora" placeholder="$2.900"></div>
+          <div><label>Etiqueta</label><select class="etiqueta">${ETIQUETAS.map(e => `<option value="${e}">${e || 'Sin etiqueta'}</option>`).join('')}</select></div>
+          <div><label>Mostrar hasta</label><input type="date" class="hasta"></div>
+          <div><label>Segundos</label><input type="number" class="seg" value="8" min="3" max="30"></div>
+        </div>
+      </div>
+      <div class="tvs"></div>
+      <div class="pie"><span class="estado">Vacío</span><button class="borrarPromo">Borrar promo</button></div>`;
+    const u = { i, el, img: el.querySelector('.foto'), sinFoto: el.querySelector('.sinFoto'),
+                file: el.querySelector('input[type=file]'), titulo: el.querySelector('.titulo'),
+                detalle: el.querySelector('.detalle'), antes: el.querySelector('.antes'),
+                ahora: el.querySelector('.ahora'), etiqueta: el.querySelector('.etiqueta'),
+                hasta: el.querySelector('.hasta'), seg: el.querySelector('.seg'),
+                tvs: el.querySelector('.tvs'), estado: el.querySelector('.estado'),
+                borrar: el.querySelector('.borrarPromo'),
+                ruta: `promos/p${i + 1}.jpg`, nueva: null, tieneFoto: false };
+    u.tvs.innerHTML = pantallas.map(([c, n]) => `<label><input type="checkbox" value="${c}" checked>${n}</label>`).join('');
+    ['titulo','detalle','antes','ahora','etiqueta','hasta','seg'].forEach(k => u[k].addEventListener('input', hayCambios));
+    u.etiqueta.addEventListener('change', hayCambios);
+    u.tvs.querySelectorAll('input').forEach(c => c.addEventListener('change', hayCambios));
+    u.file.addEventListener('change', () => elegirFoto(u));
+    u.borrar.onclick = () => {
+      if (!confirm('¿Borrar esta promo?')) return;
+      u.titulo.value = ''; u.detalle.value = ''; u.antes.value = ''; u.ahora.value = '';
+      u.hasta.value = ''; u.etiqueta.value = ''; u.nueva = null; u.tieneFoto = false; u.file.value = '';
+      u.img.style.display = 'none'; u.sinFoto.style.display = 'flex'; u.estado.textContent = 'Vacío';
+      hayCambios();
+    };
+    promosUI.push(u);
+    $('promos').appendChild(el);
+  }
+
+  // Achica la foto para que pese poco
+  function achicar(archivo){
+    return new Promise((ok, mal) => {
+      const lector = new FileReader();
+      lector.onload = () => {
+        const im = new Image();
+        im.onload = () => {
+          const max = 1280;
+          let w = im.width, h = im.height;
+          if (w > max || h > max) { const r = Math.min(max / w, max / h); w = Math.round(w * r); h = Math.round(h * r); }
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(im, 0, 0, w, h);
+          ok(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+        };
+        im.onerror = () => mal(new Error('No se pudo leer la imagen.'));
+        im.src = lector.result;
+      };
+      lector.onerror = () => mal(new Error('No se pudo leer la imagen.'));
+      lector.readAsDataURL(archivo);
+    });
+  }
+  async function elegirFoto(u){
+    const f = u.file.files[0];
+    if (!f) return;
+    u.estado.textContent = 'Preparando la foto…';
+    try {
+      u.nueva = await achicar(f);
+      u.img.src = 'data:image/jpeg;base64,' + u.nueva;
+      u.img.style.display = 'block'; u.sinFoto.style.display = 'none';
+      u.tieneFoto = true;
+      u.estado.textContent = 'Foto lista, falta guardar';
+      hayCambios();
+    } catch (e) {
+      u.estado.textContent = e.message;
     }
   }
 
@@ -950,6 +1190,14 @@
     guardando = true;
     marcarEstado('guardando', 'Guardando…');
     try {
+      for (const u of promosUI) {
+        if (!u.nueva) continue;
+        marcarEstado('guardando', `Subiendo la foto de la promo ${u.i + 1}…`);
+        await putArchivo(u.ruta, u.nueva, 'Foto de promo ' + (u.i + 1));
+        u.nueva = null;
+        u.estado.textContent = 'Foto guardada';
+      }
+      marcarEstado('guardando', 'Guardando…');
       await guardarEnGitHub(armarLista());
       pendiente = false; pedirRecarga = false;
       const h = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
@@ -968,6 +1216,17 @@
   $('guardarTV').onclick = () => guardar();
   $('barraBoton').onclick = () => guardar();
   $('recargarTV').onclick = () => guardar(true);
+
+  // Pestañas
+  document.querySelectorAll('.pest').forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll('.pest').forEach(x => x.classList.remove('activa'));
+      document.querySelectorAll('.panelPest').forEach(x => x.classList.remove('activa'));
+      b.classList.add('activa');
+      $(b.dataset.pest === 'foto' ? 'pestFoto' : 'pestPantallas').classList.add('activa');
+      $('barraGuardar').style.display = b.dataset.pest === 'foto' ? 'none' : '';
+    };
+  });
 
   $('guardarTV').disabled = true;
   marcarEstado('', 'Cargando lo guardado…');
