@@ -250,21 +250,14 @@
     <p class="estadoGuardado" id="notaGuardar">Sin cambios para guardar.</p>
     <p style="margin:14px 0 0"><button id="recargarTV" style="background:#555">Recargar las TV ahora</button>
       <span class="nota" style="margin-left:10px">Usalo cuando subís un index.html nuevo.</span></p>
-    <details id="avanzado">
-      <summary style="cursor:pointer;font-size:14px;color:#1c3f8f;margin-top:10px">Configurar el guardado automático</summary>
-      <label style="display:block;font-size:14px;margin:12px 0 4px">Token de GitHub (se pega una sola vez)</label>
-      <input type="text" id="token" placeholder="github_pat_..." autocomplete="off" spellcheck="false"
-             style="width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1px solid #bbb;border-radius:6px">
-      <p class="nota">Queda guardado en esta computadora. Necesita permiso <b>Contents: Read and write</b> en el repositorio <b>videosfull</b>.</p>
-      <p class="nota">Si preferís no usar token: <button id="descargar">Descargar lista</button> y subí el archivo a GitHub con <b>Add file → Upload files</b>.</p>
-    </details>
+    <p class="nota">Se guarda solo, sin claves. Se puede abrir desde cualquier PC o celular.</p>
   </div>
   <p><a href="./?menu">Volver al menú de pantallas</a></p>
   <div id="barraGuardar">
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 37</p>
+  <p class="version">Versión 38</p>
   </div>
 </div>
 
@@ -281,15 +274,28 @@
 
     function guardar(k){ try{ localStorage.setItem('pantalla', k); }catch(e){} }
     function leer(){ try{ return localStorage.getItem('pantalla'); }catch(e){ return null; } }
+    var API = 'https://script.google.com/macros/s/AKfycbyKiRcrn2P1Nt3K5VgYgntVtK6s6P51efD56zF3Vk-k5EQc6QDZTtXyvR0zesP7kDDB2Q/exec';
+    var nPedido = 0;
     function pedirLista(cb){
-      var x = new XMLHttpRequest();
-      x.open('GET', 'lista.json?t=' + new Date().getTime());
-      x.onload = function(){
-        if (x.status != 200) { cb(null, x.status); return; }
-        try { cb(JSON.parse(x.responseText), 200); } catch(e) { cb(null, 0); }
-      };
-      x.onerror = function(){ cb(null, 0); };
-      x.send();
+      var nombre = 'cbLista' + (++nPedido) + '_' + new Date().getTime();
+      var sc = document.createElement('script'), contestado = false;
+      function terminar(d){
+        if (contestado) return;
+        contestado = true;
+        try { delete window[nombre]; } catch(e) { window[nombre] = null; }
+        if (sc.parentNode) sc.parentNode.removeChild(sc);
+        cb(d);
+      }
+      window[nombre] = function(d){ terminar(d && typeof d === 'object' ? d : null); };
+      sc.onerror = function(){ terminar(null); };
+      sc.src = API + '?accion=leer&callback=' + nombre + '&t=' + new Date().getTime();
+      document.getElementsByTagName('head')[0].appendChild(sc);
+      setTimeout(function(){ terminar(null); }, 20000);
+    }
+    function urlFoto(img){
+      if (!img) return '';
+      if (img.indexOf('http') === 0 || img.indexOf('promos/') === 0) return img;
+      return 'https://drive.google.com/thumbnail?id=' + img + '&sz=w1920';
     }
     function enCompleta(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
     function pantallaCompleta(){
@@ -598,7 +604,7 @@
       $('promoDetalle').innerHTML = p.detalle || '';
       $('promoAntes').innerHTML = p.antes || '';
       $('promoAhora').innerHTML = p.ahora || '';
-      var url = p.img + (versionActual ? '?v=' + versionActual : '');
+      var url = urlFoto(p.img);
       $('promoFondo').style.backgroundImage = 'url("' + url + '")';
       img.onload = function(){
         caja.className = (img.naturalWidth >= img.naturalHeight * 1.2) ? 'full' : '';
@@ -931,8 +937,8 @@
                 recargar: pedirRecarga ? String(Date.now()) : (guardadoPrevio && guardadoPrevio.recargar) || '',
                 horario: { activo: $('horActivo').checked, desde: $('horDesde').value || '07:00',
                            hasta: $('horHasta').value || '22:00', dias: leerDias($('horDias')) } };
-    L.promos = promosUI.filter(u => u.tieneFoto && (u.titulo.value.trim() || u.ahora.value.trim())).map(u => ({
-      img: u.ruta,
+    L.promos = promosUI.filter(u => u.idFoto && (u.titulo.value.trim() || u.ahora.value.trim())).map(u => ({
+      img: u.idFoto,
       titulo: u.titulo.value.trim(),
       detalle: u.detalle.value.trim(),
       antes: u.antes.value.trim(),
@@ -960,18 +966,8 @@
 
   // Carga lo que ya está guardado (primero desde GitHub, que siempre está al día)
   async function listaGuardada(){
-    if (token) {
-      try {
-        const r = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/lista.json?ref=main&t=${Date.now()}`,
-          { cache: 'no-store', headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' } });
-        if (r.ok) {
-          const j = await r.json();
-          return JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\n/g, '')))));
-        }
-      } catch (e) {}
-    }
-    const r2 = await fetch('lista.json?t=' + Date.now());
-    return r2.ok ? r2.json() : null;
+    const d = await pedirDatos();
+    return (d && d.v) ? d : (d && Object.keys(d).length ? d : null);
   }
 
   let guardadoPrevio = null;
@@ -991,8 +987,9 @@
       u.etiqueta.value = p.etiqueta || ''; u.hasta.value = p.hasta || ''; u.seg.value = p.seg || 8;
       u.tvs.querySelectorAll('input').forEach(c => { c.checked = !p.tvs || !p.tvs.length || p.tvs.indexOf(c.value) > -1; });
       if (p.img) {
-        u.ruta = p.img; u.tieneFoto = true;
-        u.img.src = p.img + '?t=' + Date.now();
+        u.idFoto = p.img; u.tieneFoto = true;
+        u.img.src = p.img.indexOf('http') === 0 || p.img.indexOf('promos/') === 0
+          ? p.img : 'https://drive.google.com/thumbnail?id=' + p.img + '&sz=w600';
         u.img.style.display = 'block'; u.sinFoto.style.display = 'none';
         u.estado.textContent = p.hasta ? 'Se muestra hasta el ' + p.hasta : 'Activa';
       }
@@ -1021,42 +1018,43 @@
     });
   }
 
-  // ---- Guardado automático en GitHub ----
-  const OWNER = 'farmex2026', REPO = 'videosfull';
-  let token = '';
-  try { token = localStorage.getItem('gh_token') || ''; } catch(e) {}
-  $('token').value = token;
-  $('token').addEventListener('input', () => {
-    token = $('token').value.trim();
-    try { localStorage.setItem('gh_token', token); } catch(e) {}
-  });
-  if (!token) $('avanzado').open = true;
-
-  const esperar = ms => new Promise(r => setTimeout(r, ms));
-  async function guardarEnGitHub(json){ return putArchivo('lista.json', btoa(unescape(encodeURIComponent(json))), 'Actualizar lista de videos'); }
-  async function putArchivo(ruta, contenido, mensaje){
-    const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${ruta}`;
-    const h = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' };
-    for (let intento = 1; ; intento++) {
-      let sha = null;
-      // el ?t= evita que GitHub devuelva un sha viejo de su caché (eso causaba el error 409)
-      const g = await fetch(`${url}?ref=main&t=${Date.now()}`, { headers: h, cache: 'no-store' });
-      if (g.status === 401) throw new Error('El token no es válido o venció.');
-      if (g.ok) sha = (await g.json()).sha;
-      else if (g.status !== 404) throw new Error('No se pudo leer el repositorio (' + g.status + ').');
-      const cuerpo = { message: mensaje, branch: 'main', content: contenido };
-      if (sha) cuerpo.sha = sha;
-      const r = await fetch(url, { method: 'PUT', headers: h, body: JSON.stringify(cuerpo) });
-      if (r.ok) return;
-      if (r.status === 401) throw new Error('El token no es válido o venció.');
-      if (r.status === 403) throw new Error('El token no tiene permiso de escritura en videosfull.');
-      if ((r.status === 409 || r.status === 422) && intento < 8) { await esperar(1200 * intento); continue; }
-      const detalle = await r.text().catch(() => '');
-      throw new Error(r.status === 409
-        ? 'GitHub está ocupado con otro cambio. Esperá unos segundos y tocá Reintentar.'
-        : 'GitHub rechazó el cambio (' + r.status + '). ' + detalle.slice(0, 120));
-    }
+  // ---- Guardado en la planilla (Apps Script), sin claves ----
+  const API = 'https://script.google.com/macros/s/AKfycbyKiRcrn2P1Nt3K5VgYgntVtK6s6P51efD56zF3Vk-k5EQc6QDZTtXyvR0zesP7kDDB2Q/exec';
+  let nPedido = 0;
+  function pedirDatos(){
+    return new Promise((ok, mal) => {
+      const nombre = 'cbCfg' + (++nPedido) + '_' + Date.now();
+      const sc = document.createElement('script');
+      let contestado = false;
+      const terminar = (d, err) => {
+        if (contestado) return;
+        contestado = true;
+        try { delete window[nombre]; } catch(e) { window[nombre] = null; }
+        if (sc.parentNode) sc.parentNode.removeChild(sc);
+        err ? mal(err) : ok(d);
+      };
+      window[nombre] = d => terminar(d);
+      sc.onerror = () => terminar(null, new Error('No se pudo conectar con la planilla.'));
+      sc.src = `${API}?accion=leer&callback=${nombre}&t=${Date.now()}`;
+      document.head.appendChild(sc);
+      setTimeout(() => terminar(null, new Error('La planilla no respondió. Probá de nuevo.')), 20000);
+    });
   }
+  async function mandar(cuerpo){
+    const r = await fetch(API, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(cuerpo)
+    });
+    if (!r.ok) throw new Error('La planilla rechazó el cambio (' + r.status + ').');
+    const t = await r.text();
+    let j = {};
+    try { j = JSON.parse(t); } catch(e) { throw new Error('Respuesta rara de la planilla.'); }
+    if (!j.ok) throw new Error(j.error || 'No se pudo guardar.');
+    return j;
+  }
+  const guardarEnGitHub = json => mandar({ accion: 'guardar', datos: JSON.parse(json) });
+  const subirFoto = (nombre, datos) => mandar({ accion: 'foto', nombre, datos });
 
   // ---- Promos ----
   const MAXPROMOS = 6;
@@ -1090,7 +1088,7 @@
                 hasta: el.querySelector('.hasta'), seg: el.querySelector('.seg'),
                 tvs: el.querySelector('.tvs'), estado: el.querySelector('.estado'),
                 borrar: el.querySelector('.borrarPromo'),
-                ruta: `promos/p${i + 1}.jpg`, nueva: null, tieneFoto: false };
+                ruta: `p${i + 1}.jpg`, idFoto: '', nueva: null, tieneFoto: false };
     u.tvs.innerHTML = pantallas.map(([c, n]) => `<label><input type="checkbox" value="${c}" checked>${n}</label>`).join('');
     ['titulo','detalle','antes','ahora','etiqueta','hasta','seg'].forEach(k => u[k].addEventListener('input', hayCambios));
     u.etiqueta.addEventListener('change', hayCambios);
@@ -1181,19 +1179,14 @@
   let pedirRecarga = false;
   async function guardar(recargar){
     pedirRecarga = !!recargar;
-    if (!token) {
-      $('avanzado').open = true;
-      marcarEstado('error', 'Falta el token. Pegalo abajo, o usá "Descargar lista".');
-      $('token').focus();
-      return;
-    }
     guardando = true;
     marcarEstado('guardando', 'Guardando…');
     try {
       for (const u of promosUI) {
         if (!u.nueva) continue;
         marcarEstado('guardando', `Subiendo la foto de la promo ${u.i + 1}…`);
-        await putArchivo(u.ruta, u.nueva, 'Foto de promo ' + (u.i + 1));
+        const r = await subirFoto(u.ruta, u.nueva);
+        u.idFoto = r.id;
         u.nueva = null;
         u.estado.textContent = 'Foto guardada';
       }
@@ -1230,23 +1223,13 @@
 
   $('guardarTV').disabled = true;
   marcarEstado('', 'Cargando lo guardado…');
-  // Carga lo último guardado (va al final: necesita el token ya leído)
+  // Carga lo último guardado en la planilla
   listaGuardada()
     .then(L => { aplicarLista(L); marcarEstado('guardado', L ? 'Datos cargados. Sin cambios para guardar.' : 'Todavía no hay nada guardado.'); })
     .catch(e => { yaCargo = true; $('guardarTV').disabled = false;
       marcarEstado('error', 'No se pudo leer lo guardado: ' + e.message); });
   window.addEventListener('beforeunload', e => { if (pendiente) { e.preventDefault(); e.returnValue = ''; } });
 
-  // Genera lista.json para bajar a mano
-  $('descargar').onclick = () => {
-    const blob = new Blob([armarLista()], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'lista.json';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    $('notaGuardar').textContent = '✓ lista.json descargado. Subilo a GitHub con Add file → Upload files.';
-  };
 })();
 </script>
 </body>
