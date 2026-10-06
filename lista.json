@@ -1,5 +1,5 @@
 {
- "v": "1791287336362",
+ "v": "1791287909314",
  "slots": {
   "tienda1": [
    "1PxIjS1GGyI",
@@ -8,16 +8,16 @@
    "1PxIjS1GGyI"
   ],
   "tienda2": [
-   "qgVkHG9f4RY",
-   "qgVkHG9f4RY",
-   "qgVkHG9f4RY",
-   "qgVkHG9f4RY"
+   "",
+   "",
+   "",
+   ""
   ],
   "tienda3": [
-   "c6Vj9Glvga4",
-   "c6Vj9Glvga4",
-   "c6Vj9Glvga4",
-   "c6Vj9Glvga4"
+   "",
+   "",
+   "",
+   ""
   ],
   "tienda4": [
    "SkQmQKvehBU",
@@ -39,18 +39,8 @@
    "1PxIjS1GGyI",
    "1PxIjS1GGyI"
   ],
-  "tienda2": [
-   "qgVkHG9f4RY",
-   "qgVkHG9f4RY",
-   "qgVkHG9f4RY",
-   "qgVkHG9f4RY"
-  ],
-  "tienda3": [
-   "c6Vj9Glvga4",
-   "c6Vj9Glvga4",
-   "c6Vj9Glvga4",
-   "c6Vj9Glvga4"
-  ],
+  "tienda2": [],
+  "tienda3": [],
   "tienda4": [
    "SkQmQKvehBU",
    "SkQmQKvehBU",
