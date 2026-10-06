@@ -133,7 +133,17 @@
   .estadoGuardado.pendiente{color:#a15c00}
   .estadoGuardado.guardado{color:#1a7f37}
   .estadoGuardado.error{color:#c62828}
-  .promo{border:1px solid #e0e5ee;border-radius:10px;padding:12px;margin-bottom:12px;background:#f9fafc}
+  .promo{border:1px solid #e0e5ee;border-radius:10px;padding:0;margin-bottom:8px;background:#f9fafc;overflow:hidden}
+  .promo .cab{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;user-select:none}
+  .promo .cab:hover{background:#eef1f6}
+  .promo .cab .flecha{color:#1c3f8f;font-size:12px;width:12px}
+  .promo .cab .nom{flex:1;font-size:14px;font-weight:bold;color:#1a1a1a}
+  .promo .cab .nom span{font-weight:normal;color:#777}
+  .promo .cab .mini{width:46px;height:34px;border-radius:5px;object-fit:cover;background:#e3e7ee}
+  .promo .cab .sinMini{width:46px;height:34px;border-radius:5px;border:2px dashed #c5cdda;box-sizing:border-box}
+  .promo .cuerpo{display:none;padding:0 12px 12px}
+  .promo.abierta .cuerpo{display:block}
+  .promo.abierta .cab{background:#eef1f6}
   .promo .fila1{display:flex;gap:12px;flex-wrap:wrap}
   .promo .fotoCaja{width:150px}
   .promo .foto{width:150px;aspect-ratio:4/3;background:#e3e7ee;border-radius:8px;object-fit:cover;display:block}
@@ -257,7 +267,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 38</p>
+  <p class="version">Versión 40</p>
   </div>
 </div>
 
@@ -394,6 +404,7 @@
     function siguienteYT(){
       if (recargaPendiente) { location.reload(); return; }
       if (!ytIds.length || enPromo) return;
+      if (ytIds.length === 1 && !promosDeEstaTV().length) { try { yt.seekTo(0, true); yt.playVideo(); } catch(e){} return; }
       mostrarPromo(function(){
         if (!actual || !ytIds.length) return;
         if (ytIds.length === 1 && !promosDeEstaTV().length) { // un solo video y sin promos: sin recargar
@@ -412,6 +423,7 @@
       if (!ids.length) { $('yt').style.display = 'none'; if (yt) { try { yt.stopVideo(); } catch(e){} } cargando.style.display = 'none'; sinVideo(); return; }
       msg.style.display = 'none';
       $('yt').style.display = 'block';
+      vigilarFinal();
       cargarAPI(function(){
         if (!modoYT) return;
         if (yt && ytListo) {
@@ -453,7 +465,23 @@
         });
       });
     }
+    // Vuelve al principio un toque antes del final, así no aparece la pantalla final de YouTube
+    var timerFin = null;
+    function vigilarFinal(){
+      clearInterval(timerFin);
+      timerFin = setInterval(function(){
+        if (!modoYT || enNegro || enPromo || !yt || !ytListo || !yt.getDuration) return;
+        if (yt.getPlayerState && yt.getPlayerState() !== 1) return;
+        var d = yt.getDuration(), t = yt.getCurrentTime();
+        if (!d || !t) return;
+        if (d - t <= 0.45) {
+          if (ytIds.length === 1 && !promosDeEstaTV().length) { try { yt.seekTo(0, true); } catch(e){} }
+          else siguienteYT();
+        }
+      }, 200);
+    }
     function pararYT(){
+      clearInterval(timerFin);
       modoYT = false;
       if (yt) { try { yt.stopVideo(); } catch(e){} }
       $('yt').style.display = 'none';
@@ -993,6 +1021,7 @@
         u.img.style.display = 'block'; u.sinFoto.style.display = 'none';
         u.estado.textContent = p.hasta ? 'Se muestra hasta el ' + p.hasta : 'Activa';
       }
+      resumen(u);
     });
     if (L.horario) {
       $('horActivo').checked = !!L.horario.activo;
@@ -1063,7 +1092,13 @@
   for (let i = 0; i < MAXPROMOS; i++) {
     const el = document.createElement('div');
     el.className = 'promo';
-    el.innerHTML = `<div class="fila1">
+    el.innerHTML = `<div class="cab">
+        <span class="flecha">▶</span>
+        <img class="mini" style="display:none" alt=""><span class="sinMini"></span>
+        <span class="nom">Promo ${i + 1} <span>· vacía</span></span>
+      </div>
+      <div class="cuerpo">
+      <div class="fila1">
         <div class="fotoCaja">
           <img class="foto" style="display:none" alt="">
           <div class="sinFoto">Sin foto</div>
@@ -1080,7 +1115,8 @@
         </div>
       </div>
       <div class="tvs"></div>
-      <div class="pie"><span class="estado">Vacío</span><button class="borrarPromo">Borrar promo</button></div>`;
+      <div class="pie"><span class="estado">Vacío</span><button class="borrarPromo">Borrar promo</button></div>
+      </div>`;
     const u = { i, el, img: el.querySelector('.foto'), sinFoto: el.querySelector('.sinFoto'),
                 file: el.querySelector('input[type=file]'), titulo: el.querySelector('.titulo'),
                 detalle: el.querySelector('.detalle'), antes: el.querySelector('.antes'),
@@ -1088,9 +1124,13 @@
                 hasta: el.querySelector('.hasta'), seg: el.querySelector('.seg'),
                 tvs: el.querySelector('.tvs'), estado: el.querySelector('.estado'),
                 borrar: el.querySelector('.borrarPromo'),
+                cab: el.querySelector('.cab'), nom: el.querySelector('.nom'),
+                mini: el.querySelector('.mini'), sinMini: el.querySelector('.sinMini'),
                 ruta: `p${i + 1}.jpg`, idFoto: '', nueva: null, tieneFoto: false };
     u.tvs.innerHTML = pantallas.map(([c, n]) => `<label><input type="checkbox" value="${c}" checked>${n}</label>`).join('');
-    ['titulo','detalle','antes','ahora','etiqueta','hasta','seg'].forEach(k => u[k].addEventListener('input', hayCambios));
+    u.cab.onclick = () => el.classList.toggle('abierta');
+    ['titulo','detalle','antes','ahora','etiqueta','hasta','seg'].forEach(k =>
+      u[k].addEventListener('input', () => { hayCambios(); resumen(u); }));
     u.etiqueta.addEventListener('change', hayCambios);
     u.tvs.querySelectorAll('input').forEach(c => c.addEventListener('change', hayCambios));
     u.file.addEventListener('change', () => elegirFoto(u));
@@ -1099,10 +1139,25 @@
       u.titulo.value = ''; u.detalle.value = ''; u.antes.value = ''; u.ahora.value = '';
       u.hasta.value = ''; u.etiqueta.value = ''; u.nueva = null; u.tieneFoto = false; u.file.value = '';
       u.img.style.display = 'none'; u.sinFoto.style.display = 'flex'; u.estado.textContent = 'Vacío';
-      hayCambios();
+      u.idFoto = '';
+      hayCambios(); resumen(u);
     };
     promosUI.push(u);
     $('promos').appendChild(el);
+  }
+
+  // Texto del encabezado plegado
+  function resumen(u){
+    const t = u.titulo.value.trim();
+    const precio = u.ahora.value.trim();
+    const vence = u.hasta.value ? ' · hasta ' + u.hasta.value.split('-').reverse().join('/') : '';
+    u.nom.innerHTML = t
+      ? `${t} <span>${precio ? '· ' + precio : ''}${vence}</span>`
+      : `Promo ${u.i + 1} <span>· vacía</span>`;
+    const hayFoto = u.img.style.display === 'block';
+    u.mini.style.display = hayFoto ? 'block' : 'none';
+    u.sinMini.style.display = hayFoto ? 'none' : 'block';
+    if (hayFoto) u.mini.src = u.img.src;
   }
 
   // Achica la foto para que pese poco
@@ -1137,7 +1192,7 @@
       u.img.style.display = 'block'; u.sinFoto.style.display = 'none';
       u.tieneFoto = true;
       u.estado.textContent = 'Foto lista, falta guardar';
-      hayCambios();
+      hayCambios(); resumen(u);
     } catch (e) {
       u.estado.textContent = e.message;
     }
