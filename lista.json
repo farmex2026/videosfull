@@ -1,5 +1,5 @@
 {
- "v": "1791102583501",
+ "v": "1791287288153",
  "slots": {
   "tienda1": [
    "UnTAWopgD3Q",
@@ -20,10 +20,10 @@
    "c6Vj9Glvga4"
   ],
   "tienda4": [
-   "ml1rTLQjaII",
-   "ml1rTLQjaII",
-   "ml1rTLQjaII",
-   "ml1rTLQjaII"
+   "SkQmQKvehBU",
+   "SkQmQKvehBU",
+   "SkQmQKvehBU",
+   "SkQmQKvehBU"
   ],
   "boxes": [
    "97uqi38Rrhk",
@@ -52,10 +52,10 @@
    "c6Vj9Glvga4"
   ],
   "tienda4": [
-   "ml1rTLQjaII",
-   "ml1rTLQjaII",
-   "ml1rTLQjaII",
-   "ml1rTLQjaII"
+   "SkQmQKvehBU",
+   "SkQmQKvehBU",
+   "SkQmQKvehBU",
+   "SkQmQKvehBU"
   ],
   "boxes": [
    "97uqi38Rrhk",
@@ -112,7 +112,7 @@
    ]
   },
   "tienda4": {
-   "propio": true,
+   "propio": false,
    "activo": true,
    "desde": "05:55",
    "hasta": "22:00",
@@ -156,6 +156,7 @@
    0
   ]
  },
+ "promos": [],
  "tienda1": [],
  "tienda2": [],
  "tienda3": [],
