@@ -251,6 +251,11 @@
         <option value="medium">360p</option>
       </select></label>
     <p class="nota">Es un pedido a YouTube: si la conexión no da, baja la calidad igual. Con internet lento conviene 720p.</p>
+    <label style="display:block;margin-top:14px">Ajuste de imagen en las TV
+      <select id="escala" style="display:block;margin-top:4px;padding:9px;font-size:15px;border:1px solid #bbb;border-radius:6px">
+        <option value="forzado">Forzar 1080p (recomendado)</option>
+        <option value="normal">Normal (si se ven líneas o rayas)</option>
+      </select></label>
     <p class="nota">La TV queda encendida pero con la pantalla en negro. No se apaga sola: eso lo tiene que hacer el temporizador del televisor o un enchufe inteligente.</p>
   </div>
   <div id="tvs"></div>
@@ -272,7 +277,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 42</p>
+  <p class="version">Versión 44</p>
   </div>
 </div>
 
@@ -280,6 +285,7 @@
 <script>
   var q = location.search;
   if (q.indexOf('config') < 0) {
+    var VERSION = '44';
     var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes' };
     var $ = function(id){ return document.getElementById(id); };
     var v = $('v'), menu = $('menu'), capa = $('capa'), aviso = $('aviso'), msg = $('msg'), cargando = $('cargando');
@@ -394,15 +400,28 @@
     var yt = null, ytListo = false, ytIds = [], ytIdx = 0, ytErrores = 0, modoYT = false, conSonido = false, esperandoAPI = [];
     var calidad = '';
     function laCalidad(){ return calidad || 'hd1080'; }
+    // Apaga los subtítulos automáticos de YouTube
+    function sacarSubtitulos(){
+      if (!yt) return;
+      try { yt.unloadModule('captions'); } catch(e){}
+      try { yt.unloadModule('cc'); } catch(e){}
+    }
     function pedirCalidad(){
       if (!yt) return;
       try { yt.setPlaybackQuality(laCalidad()); } catch(e){}
       try { yt.setPlaybackQualityRange(laCalidad(), laCalidad()); } catch(e){}
     }
     // El reproductor se arma en 1920x1080 y se achica con CSS: así YouTube manda la mejor calidad
+    var escalar = true;
     function ajustarEscala(){
       var marco = $('yt').getElementsByTagName('iframe')[0];
       if (!marco) return;
+      if (!escalar) { // modo normal: el reproductor ocupa la pantalla tal cual
+        marco.style.transform = 'none'; marco.style.left = '0'; marco.style.top = '0';
+        marco.style.width = '100%'; marco.style.height = '100%';
+        return;
+      }
+      marco.style.width = '1920px'; marco.style.height = '1080px';
       var w = window.innerWidth || 1920, h = window.innerHeight || 1080;
       var e = Math.min(w / 1920, h / 1080);
       marco.style.transform = 'scale(' + e + ')';
@@ -423,6 +442,7 @@
       if (!yt) return;
       try { yt.loadVideoById({ videoId: id, suggestedQuality: laCalidad() }); if (conSonido) yt.unMute(); else yt.mute(); } catch(e){}
       setTimeout(ajustarEscala, 300);
+      setTimeout(sacarSubtitulos, 1200);
     }
     function siguienteYT(){
       if (recargaPendiente) { recargarPagina(); return; }
@@ -459,7 +479,8 @@
         yt = new YT.Player('ytPlayer', {
           width: 1920, height: 1080, videoId: ytIds[0],
           playerVars: { autoplay: 1, mute: 1, controls: 0, rel: 0, modestbranding: 1, playsinline: 1,
-                        iv_load_policy: 3, disablekb: 1, fs: 0, cc_load_policy: 0, vq: 'hd1080' },
+                        iv_load_policy: 3, disablekb: 1, fs: 0, cc_load_policy: 0, cc_lang_pref: 'none',
+                        hl: 'es', vq: 'hd1080' },
           events: {
             onReady: function(e){
               ytListo = true;
@@ -468,11 +489,13 @@
               if (ytIds.length > 1 && !promos.length) { try { e.target.loadPlaylist({ playlist: ytIds }); e.target.setLoop(true); } catch(x){} }
               e.target.playVideo();
               pedirCalidad();
+              sacarSubtitulos();
+              setTimeout(sacarSubtitulos, 1500);
               ajustarEscala();
               setTimeout(ajustarEscala, 500);
             },
             onStateChange: function(e){
-              if (e.data === 1) { ytErrores = 0; marcarOk(); cargando.style.display = 'none'; pedirCalidad(); ajustarEscala(); } // reproduciendo
+              if (e.data === 1) { ytErrores = 0; marcarOk(); cargando.style.display = 'none'; pedirCalidad(); sacarSubtitulos(); ajustarEscala(); } // reproduciendo
               if (e.data === 0) siguienteYT();                                       // terminó
               if (e.data === 2 && !enNegro && !enPromo) setTimeout(function(){        // quedó en pausa
                 if (!enNegro && !enPromo && modoYT && yt && yt.getPlayerState && yt.getPlayerState() === 2) { try { yt.playVideo(); } catch(x){} }
@@ -681,7 +704,7 @@
         '<br><span style="font-size:17px;color:#aaa">' + textoHorario() +
         ' · ahora son las ' + (ahora.getHours() < 10 ? '0' : '') + ahora.getHours() +
         ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes() +
-        ' · Versión 36</span>';
+        ' · Versión ' + VERSION + '</span>';
       capa.style.display = 'block';
       $('btnSeguir').focus();
       clearTimeout(timerCapa);
@@ -726,6 +749,7 @@
         if (mio !== turno) return;
         if (!L) { setTimeout(function(){ if (actual === clave && turno === mio) reproducir(clave); }, 20000); }
         calidad = (L && L.calidad) || '';
+        escalar = !(L && L.escala === 'normal');
         promos = (L && L.promos) || [];
         horario = L ? L.horario : null; horarios = L ? L.horarios : null;
         arrancarHorario(); arrancarVigilancia();
@@ -764,6 +788,7 @@
           if (!L || !actual) return;
           revisarRecarga(L);
           calidad = L.calidad || ''; pedirCalidad();
+          escalar = L.escala !== 'normal'; ajustarEscala();
           promos = L.promos || [];
           horario = L.horario; horarios = L.horarios; revisarHorario();
           if (L.v === versionActual) return;
@@ -986,7 +1011,8 @@
   }
 
   function armarLista(){
-    const L = { v: String(Date.now()), slots: {}, yt: {}, calidad: $('calidad').value, horarios: {},
+    const L = { v: String(Date.now()), slots: {}, yt: {}, calidad: $('calidad').value,
+                escala: $('escala').value, horarios: {},
                 recargar: pedirRecarga ? String(Date.now()) : (guardadoPrevio && guardadoPrevio.recargar) || '',
                 horario: { activo: $('horActivo').checked, desde: $('horDesde').value || '07:00',
                            hasta: $('horHasta').value || '22:00', dias: leerDias($('horDias')) } };
@@ -1015,7 +1041,7 @@
     return JSON.stringify(L, null, 1);
   }
 
-  ['horActivo','horDesde','horHasta','calidad'].forEach(id => $(id).addEventListener('change', hayCambios));
+  ['horActivo','horDesde','horHasta','calidad','escala'].forEach(id => $(id).addEventListener('change', hayCambios));
 
   // Carga lo que ya está guardado (primero desde GitHub, que siempre está al día)
   async function listaGuardada(){
@@ -1032,6 +1058,7 @@
     if (pendiente) return; // el usuario ya empezó a editar: no le pisamos lo que escribió
     if (!L) return;
     if (L.calidad !== undefined) $('calidad').value = L.calidad || '';
+    if (L.escala) $('escala').value = L.escala;
     (L.promos || []).forEach((p, i) => {
       const u = promosUI[i];
       if (!u) return;
