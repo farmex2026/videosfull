@@ -32,7 +32,9 @@
   #promo.full #promoTexto{position:relative;width:100%;padding:3vh 4vw;background:linear-gradient(transparent,rgba(0,0,0,.8) 35%)}
   #negro{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:13}
   #yt{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000}
-  #yt iframe{width:100%;height:100%;border:0;pointer-events:none}
+  #yt{overflow:hidden}
+  #yt iframe{position:absolute;top:0;left:0;width:1920px;height:1080px;border:0;pointer-events:none;
+       transform-origin:0 0}
   body.quieto,body.quieto *{cursor:url("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==") 0 0,none !important}
   #capa{display:none;position:fixed;left:50%;bottom:40px;transform:translateX(-50%);
         background:rgba(0,0,0,.85);border:2px solid #444;border-radius:12px;padding:20px 26px;
@@ -267,7 +269,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 40</p>
+  <p class="version">Versión 41</p>
   </div>
 </div>
 
@@ -383,11 +385,23 @@
     // ---- YouTube ----
     var yt = null, ytListo = false, ytIds = [], ytIdx = 0, ytErrores = 0, modoYT = false, conSonido = false, esperandoAPI = [];
     var calidad = '';
+    function laCalidad(){ return calidad || 'hd1080'; }
     function pedirCalidad(){
-      if (!yt || !calidad) return;
-      try { yt.setPlaybackQuality(calidad); } catch(e){}
-      try { yt.setPlaybackQualityRange(calidad, calidad); } catch(e){}
+      if (!yt) return;
+      try { yt.setPlaybackQuality(laCalidad()); } catch(e){}
+      try { yt.setPlaybackQualityRange(laCalidad(), laCalidad()); } catch(e){}
     }
+    // El reproductor se arma en 1920x1080 y se achica con CSS: así YouTube manda la mejor calidad
+    function ajustarEscala(){
+      var marco = $('yt').getElementsByTagName('iframe')[0];
+      if (!marco) return;
+      var w = window.innerWidth || 1920, h = window.innerHeight || 1080;
+      var e = Math.min(w / 1920, h / 1080);
+      marco.style.transform = 'scale(' + e + ')';
+      marco.style.left = Math.round((w - 1920 * e) / 2) + 'px';
+      marco.style.top = Math.round((h - 1080 * e) / 2) + 'px';
+    }
+    if (window.addEventListener) window.addEventListener('resize', ajustarEscala);
     function cargarAPI(cb){
       if (window.YT && YT.Player) { cb(); return; }
       esperandoAPI.push(cb);
@@ -399,7 +413,8 @@
     }
     function cargarYT(id){
       if (!yt) return;
-      try { yt.loadVideoById(id); if (conSonido) yt.unMute(); else yt.mute(); } catch(e){}
+      try { yt.loadVideoById({ videoId: id, suggestedQuality: laCalidad() }); if (conSonido) yt.unMute(); else yt.mute(); } catch(e){}
+      setTimeout(ajustarEscala, 300);
     }
     function siguienteYT(){
       if (recargaPendiente) { location.reload(); return; }
@@ -434,9 +449,9 @@
         }
         if (yt) return;
         yt = new YT.Player('ytPlayer', {
-          width: '100%', height: '100%', videoId: ytIds[0],
+          width: 1920, height: 1080, videoId: ytIds[0],
           playerVars: { autoplay: 1, mute: 1, controls: 0, rel: 0, modestbranding: 1, playsinline: 1,
-                        iv_load_policy: 3, disablekb: 1, fs: 0, cc_load_policy: 0 },
+                        iv_load_policy: 3, disablekb: 1, fs: 0, cc_load_policy: 0, vq: 'hd1080' },
           events: {
             onReady: function(e){
               ytListo = true;
@@ -445,9 +460,11 @@
               if (ytIds.length > 1 && !promos.length) { try { e.target.loadPlaylist({ playlist: ytIds }); e.target.setLoop(true); } catch(x){} }
               e.target.playVideo();
               pedirCalidad();
+              ajustarEscala();
+              setTimeout(ajustarEscala, 500);
             },
             onStateChange: function(e){
-              if (e.data === 1) { ytErrores = 0; marcarOk(); cargando.style.display = 'none'; pedirCalidad(); } // reproduciendo
+              if (e.data === 1) { ytErrores = 0; marcarOk(); cargando.style.display = 'none'; pedirCalidad(); ajustarEscala(); } // reproduciendo
               if (e.data === 0) siguienteYT();                                       // terminó
               if (e.data === 2 && !enNegro && !enPromo) setTimeout(function(){        // quedó en pausa
                 if (!enNegro && !enPromo && modoYT && yt && yt.getPlayerState && yt.getPlayerState() === 2) { try { yt.playVideo(); } catch(x){} }
