@@ -1,165 +1,44 @@
 {
- "v": "1791288597188",
+ "v": "1791368483923",
+ "recargar": "1791368483923",
+ "yt": {
+  "tienda1": [],
+  "tienda2": [],
+  "tienda3": [],
+  "tienda4": [],
+  "boxes": []
+ },
  "slots": {
   "tienda1": [
-   "1PxIjS1GGyI",
-   "1PxIjS1GGyI",
-   "1PxIjS1GGyI",
-   "1PxIjS1GGyI"
+   "",
+   "",
+   "",
+   ""
   ],
   "tienda2": [
-   "EuHDhA0wQtw",
-   "EuHDhA0wQtw",
-   "EuHDhA0wQtw",
-   "EuHDhA0wQtw"
+   "",
+   "",
+   "",
+   ""
   ],
   "tienda3": [
-   "9z84Kv8nvsg",
-   "9z84Kv8nvsg",
-   "9z84Kv8nvsg",
-   "9z84Kv8nvsg"
+   "",
+   "",
+   "",
+   ""
   ],
   "tienda4": [
-   "SkQmQKvehBU",
-   "SkQmQKvehBU",
-   "SkQmQKvehBU",
-   "SkQmQKvehBU"
+   "",
+   "",
+   "",
+   ""
   ],
   "boxes": [
-   "97uqi38Rrhk",
-   "97uqi38Rrhk",
-   "97uqi38Rrhk",
-   "97uqi38Rrhk"
+   "",
+   "",
+   "",
+   ""
   ]
  },
- "yt": {
-  "tienda1": [
-   "1PxIjS1GGyI",
-   "1PxIjS1GGyI",
-   "1PxIjS1GGyI",
-   "1PxIjS1GGyI"
-  ],
-  "tienda2": [
-   "EuHDhA0wQtw",
-   "EuHDhA0wQtw",
-   "EuHDhA0wQtw",
-   "EuHDhA0wQtw"
-  ],
-  "tienda3": [
-   "9z84Kv8nvsg",
-   "9z84Kv8nvsg",
-   "9z84Kv8nvsg",
-   "9z84Kv8nvsg"
-  ],
-  "tienda4": [
-   "SkQmQKvehBU",
-   "SkQmQKvehBU",
-   "SkQmQKvehBU",
-   "SkQmQKvehBU"
-  ],
-  "boxes": [
-   "97uqi38Rrhk",
-   "97uqi38Rrhk",
-   "97uqi38Rrhk",
-   "97uqi38Rrhk"
-  ]
- },
- "calidad": "hd1080",
- "horarios": {
-  "tienda1": {
-   "propio": true,
-   "activo": true,
-   "desde": "05:55",
-   "hasta": "22:00",
-   "dias": [
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    0
-   ]
-  },
-  "tienda2": {
-   "propio": true,
-   "activo": true,
-   "desde": "05:55",
-   "hasta": "22:00",
-   "dias": [
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    0
-   ]
-  },
-  "tienda3": {
-   "propio": true,
-   "activo": true,
-   "desde": "05:55",
-   "hasta": "22:00",
-   "dias": [
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    0
-   ]
-  },
-  "tienda4": {
-   "propio": false,
-   "activo": true,
-   "desde": "05:55",
-   "hasta": "22:00",
-   "dias": [
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    0
-   ]
-  },
-  "boxes": {
-   "propio": true,
-   "activo": true,
-   "desde": "07:00",
-   "hasta": "22:00",
-   "dias": [
-    1,
-    2,
-    3,
-    4,
-    5,
-    6
-   ]
-  }
- },
- "recargar": "1791287336362",
- "horario": {
-  "activo": false,
-  "desde": "05:55",
-  "hasta": "21:55",
-  "dias": [
-   1,
-   2,
-   3,
-   4,
-   5,
-   6,
-   0
-  ]
- },
- "promos": [],
- "tienda1": [],
- "tienda2": [],
- "tienda3": [],
- "tienda4": [],
- "boxes": []
+ "promos": []
 }
