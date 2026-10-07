@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Pantallas FARMEX</title>
 <style>
   html,body{margin:0;height:100%;background:#000;color:#fff;font-family:Arial,sans-serif;overflow:hidden}
@@ -269,7 +272,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 41</p>
+  <p class="version">Versión 42</p>
   </div>
 </div>
 
@@ -316,6 +319,11 @@
       if (f && !enCompleta()) { try { var r = f.call(e); if (r && r.catch) r.catch(function(){}); } catch(x){} }
     }
     function cambiarUrl(u){ try{ history.replaceState(null, '', location.pathname + u); }catch(e){} }
+    // Recarga pidiendo el archivo de nuevo (evita que la TV use el guardado en caché)
+    function recargarPagina(){
+      try { location.replace(location.pathname + '?v=' + (actual || '') + '&r=' + new Date().getTime()); }
+      catch(e) { location.reload(); }
+    }
     function play(){ var r = v.play(); if (r && r.catch) r.catch(function(){}); }
 
     // Baja un video completo a memoria (para que siga sin internet)
@@ -374,7 +382,7 @@
       liberar(vieja);
     }
     function siguienteVideo(){
-      if (recargaPendiente) { location.reload(); return; }
+      if (recargaPendiente) { recargarPagina(); return; }
       if (!lista.length) return;
       if (lista.length == 1) { v.currentTime = 0; play(); return; }
       indice = (indice + 1) % lista.length;
@@ -417,7 +425,7 @@
       setTimeout(ajustarEscala, 300);
     }
     function siguienteYT(){
-      if (recargaPendiente) { location.reload(); return; }
+      if (recargaPendiente) { recargarPagina(); return; }
       if (!ytIds.length || enPromo) return;
       if (ytIds.length === 1 && !promosDeEstaTV().length) { try { yt.seekTo(0, true); yt.playVideo(); } catch(e){} return; }
       mostrarPromo(function(){
@@ -571,11 +579,11 @@
         try { visto = localStorage.getItem('recargar'); } catch(e){}
         if (visto !== String(L.recargar)) {
           try { localStorage.setItem('recargar', String(L.recargar)); } catch(e){}
-          if (visto !== null) { location.reload(); return; }
+          if (visto !== null) { recargarPagina(); return; }
         }
       }
       if (new Date().getTime() - arrancoEn > 7200000) recargaPendiente = true; // cada 2 horas
-      if (recargaPendiente && enNegro) location.reload();
+      if (recargaPendiente && enNegro) recargarPagina();
     }
 
     function arrancarHorario(){
@@ -590,7 +598,7 @@
     function reintentar(){
       if (!actual || enNegro) return;
       fallasSeguidas++;
-      if (fallasSeguidas >= 6) { location.reload(); return; } // 3 minutos sin poder: recarga la página
+      if (fallasSeguidas >= 6) { recargarPagina(); return; } // 3 minutos sin poder: recarga la página
       if (modoYT) {
         if (yt && ytListo && ytIds.length) { try { cargarYT(ytIds[ytIdx]); } catch(e){} }
         else if (ytIds.length) ponerYT(ytIds);
