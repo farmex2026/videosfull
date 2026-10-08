@@ -38,7 +38,7 @@
   #yt{overflow:hidden}
   #yt iframe{position:absolute;top:0;left:0;width:1920px;height:1080px;border:0;pointer-events:none;
        transform-origin:0 0}
-  body.quieto,body.quieto *{cursor:url("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==") 0 0,none !important}
+  body.quieto,body.quieto *{cursor:none !important}
   #capa{display:none;position:fixed;left:50%;bottom:40px;transform:translateX(-50%);
         background:rgba(0,0,0,.85);border:2px solid #444;border-radius:12px;padding:20px 26px;
         text-align:center;cursor:default}
@@ -277,7 +277,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 44</p>
+  <p class="version">Versión 45</p>
   </div>
 </div>
 
@@ -285,7 +285,7 @@
 <script>
   var q = location.search;
   if (q.indexOf('config') < 0) {
-    var VERSION = '44';
+    var VERSION = '45';
     var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes' };
     var $ = function(id){ return document.getElementById(id); };
     var v = $('v'), menu = $('menu'), capa = $('capa'), aviso = $('aviso'), msg = $('msg'), cargando = $('cargando');
