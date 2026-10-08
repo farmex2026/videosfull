@@ -11,11 +11,11 @@
   html,body{margin:0;height:100%;background:#000;color:#fff;font-family:Arial,sans-serif;overflow:hidden}
   #menu{display:none;height:100%;flex-direction:column;align-items:center;justify-content:center;gap:18px}
   #menu h1{font-size:34px;margin:0 0 4px;font-weight:normal}
-  #verMenu{font-size:18px;color:#888;margin-bottom:10px}
+  #verMenu{font-size:16px;color:#777}
   #menu a{display:block;width:340px;padding:20px;font-size:30px;text-align:center;color:#fff;
           text-decoration:none;background:#1c3f8f;border:4px solid transparent;border-radius:10px}
   #menu a:focus,#menu a:hover{border-color:#ffd100;outline:none;background:#2a57c4}
-  #menu a.chico{width:auto;padding:10px 18px;font-size:18px;background:transparent;color:#aaa}
+  #menu a.chico{width:340px;padding:14px;font-size:22px;background:#333;color:#fff}
   #v{display:none;width:100%;height:100%;object-fit:contain}
   #promo{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#111;z-index:8;overflow:hidden}
   #promoFondo{position:absolute;top:-6%;left:-6%;width:112%;height:112%;background-size:cover;background-position:center;
@@ -176,14 +176,14 @@
 <body>
 <div id="menu">
   <h1>Elegí esta pantalla</h1>
-  <div id="verMenu"></div>
   <a href="#" data-clave="tienda1">TV 1</a>
   <a href="#" data-clave="tienda2">TV 2</a>
   <a href="#" data-clave="tienda3">TV 3</a>
   <a href="#" data-clave="tienda4">TV 4</a>
   <a href="#" data-clave="boxes">TV Boxes</a>
   <a href="#" data-clave="patio">TV Patio</a>
-  <a class="chico" href="?config">Configuración</a>
+  <a class="chico" href="?config">⚙ Configuración</a>
+  <div id="verMenu"></div>
 </div>
 <div id="capa">
   <p id="capaNombre"></p>
@@ -280,7 +280,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 47</p>
+  <p class="version">Versión 48</p>
   </div>
 </div>
 
@@ -288,7 +288,7 @@
 <script>
   var q = location.search;
   if (q.indexOf('config') < 0) {
-    var VERSION = '47';
+    var VERSION = '48';
     var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes', patio:'TV Patio' };
     var $ = function(id){ return document.getElementById(id); };
     var v = $('v'), menu = $('menu'), capa = $('capa'), aviso = $('aviso'), msg = $('msg'), cargando = $('cargando');
