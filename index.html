@@ -85,9 +85,9 @@
   .tv h2{display:flex;justify-content:space-between;align-items:baseline}
   .tv .cabTv{cursor:pointer;user-select:none;margin:0}
   .tv .cabTv .flecha{color:#1c3f8f;font-size:12px;margin-right:4px}
-  .tv.plegada .cuerpoTv{display:none}
-  .tv.plegada .cabTv .flecha{display:inline-block}
-  .tv:not(.plegada) .cabTv .flecha{transform:rotate(90deg);display:inline-block}
+  .plegada .cuerpoTv{display:none}
+  .plegada .cabTv .flecha{display:inline-block}
+  .caja:not(.plegada) .cabTv .flecha{transform:rotate(90deg);display:inline-block}
   .tv.plegada h2{margin:0}
   #actualizarArriba{background:#1a7f37;font-size:16px;padding:13px 22px;font-weight:bold}
   .cajaArriba{position:sticky;top:0;z-index:5}
@@ -261,10 +261,13 @@
     <button id="actualizarArriba">🔄 Actualizar las TV ahora</button>
     <span class="nota" style="margin:0">Hace que las 6 pantallas recarguen la página y tomen la última versión.</span>
   </div>
-  <div class="caja">
-    <h2>Promos en pantalla <small style="font-size:13px;font-weight:normal;color:#666">se muestran entre los videos</small></h2>
-    <div id="promos"></div>
-    <p class="nota">La fecha de vencimiento es solo para vos: en la TV no se muestra, pero el día que vence el cartel se saca solo.</p>
+  <div class="caja plegada" id="cajaPromos">
+    <h2 class="cabTv" id="cabPromos"><span><span class="flecha">▶</span> Promos en pantalla</span>
+      <small class="cuenta" id="cuentaPromos">Sin promos</small></h2>
+    <div class="cuerpoTv">
+      <div id="promos"></div>
+      <p class="nota">La fecha de vencimiento es solo para vos: en la TV no se muestra, pero el día que vence el cartel se saca solo.</p>
+    </div>
   </div>
   <div class="caja">
     <h2>Guardar cambios</h2>
@@ -279,7 +282,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 51</p>
+  <p class="version">Versión 52</p>
   </div>
 </div>
 
@@ -287,7 +290,7 @@
 <script>
   var q = location.search;
   if (q.indexOf('config') < 0) {
-    var VERSION = '51';
+    var VERSION = '52';
     var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes', patio:'TV Patio' };
     var $ = function(id){ return document.getElementById(id); };
     var v = $('v'), menu = $('menu'), capa = $('capa'), aviso = $('aviso'), msg = $('msg'), cargando = $('cargando');
@@ -1197,6 +1200,12 @@
     $('promos').appendChild(el);
   }
 
+  $('cabPromos').onclick = () => $('cajaPromos').classList.toggle('plegada');
+  function contarPromos(){
+    const n = promosUI.filter(u => u.idFoto || u.nueva).length;
+    $('cuentaPromos').textContent = n ? `${n} promo${n > 1 ? 's' : ''} cargada${n > 1 ? 's' : ''}` : 'Sin promos';
+  }
+
   // Texto del encabezado plegado
   function resumen(u){
     const t = u.titulo.value.trim();
@@ -1209,6 +1218,7 @@
     u.mini.style.display = hayFoto ? 'block' : 'none';
     u.sinMini.style.display = hayFoto ? 'none' : 'block';
     if (hayFoto) u.mini.src = u.img.src;
+    contarPromos();
   }
 
   // Achica la foto para que pese poco
