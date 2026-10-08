@@ -9,13 +9,14 @@
 <title>Pantallas FARMEX</title>
 <style>
   html,body{margin:0;height:100%;background:#000;color:#fff;font-family:Arial,sans-serif;overflow:hidden}
-  #menu{display:none;height:100%;flex-direction:column;align-items:center;justify-content:center;gap:18px}
-  #menu h1{font-size:34px;margin:0 0 4px;font-weight:normal}
-  #verMenu{font-size:16px;color:#777}
-  #menu a{display:block;width:340px;padding:20px;font-size:30px;text-align:center;color:#fff;
-          text-decoration:none;background:#1c3f8f;border:4px solid transparent;border-radius:10px}
+  #menu{display:none;height:100%;flex-direction:column;align-items:center;justify-content:center;
+        gap:1.4vh;padding:2vh 0;box-sizing:border-box;overflow:auto}
+  #menu h1{font-size:3.4vh;margin:1vh 0 0;font-weight:normal}
+  #verMenu{font-size:1.9vh;color:#777;margin:0}
+  #menu a{display:block;width:min(340px,80vw);padding:1.8vh;font-size:3vh;text-align:center;color:#fff;
+          text-decoration:none;background:#1c3f8f;border:3px solid transparent;border-radius:10px;box-sizing:border-box}
   #menu a:focus,#menu a:hover{border-color:#ffd100;outline:none;background:#2a57c4}
-  #menu a.chico{width:340px;padding:14px;font-size:22px;background:#333;color:#fff}
+  #menu a.chico{padding:1.4vh;font-size:2.4vh;background:#333;color:#fff}
   #v{display:none;width:100%;height:100%;object-fit:contain}
   #promo{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#111;z-index:8;overflow:hidden}
   #promoFondo{position:absolute;top:-6%;left:-6%;width:112%;height:112%;background-size:cover;background-position:center;
@@ -175,6 +176,8 @@
 </head>
 <body>
 <div id="menu">
+  <a class="chico" href="?config">⚙ Configuración</a>
+  <div id="verMenu"></div>
   <h1>Elegí esta pantalla</h1>
   <a href="#" data-clave="tienda1">TV 1</a>
   <a href="#" data-clave="tienda2">TV 2</a>
@@ -182,8 +185,6 @@
   <a href="#" data-clave="tienda4">TV 4</a>
   <a href="#" data-clave="boxes">TV Boxes</a>
   <a href="#" data-clave="patio">TV Patio</a>
-  <a class="chico" href="?config">⚙ Configuración</a>
-  <div id="verMenu"></div>
 </div>
 <div id="capa">
   <p id="capaNombre"></p>
@@ -280,7 +281,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 48</p>
+  <p class="version">Versión 49</p>
   </div>
 </div>
 
@@ -288,7 +289,7 @@
 <script>
   var q = location.search;
   if (q.indexOf('config') < 0) {
-    var VERSION = '48';
+    var VERSION = '49';
     var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes', patio:'TV Patio' };
     var $ = function(id){ return document.getElementById(id); };
     var v = $('v'), menu = $('menu'), capa = $('capa'), aviso = $('aviso'), msg = $('msg'), cargando = $('cargando');
@@ -734,7 +735,8 @@
       cambiarUrl('?menu');
       $('verMenu').innerHTML = 'Versión ' + VERSION;
       menu.style.display = 'flex';
-      menu.getElementsByTagName('a')[0].focus();
+      var prim = menu.querySelector('a[data-clave]');
+      if (prim) prim.focus();
     }
 
     function reproducir(clave){
