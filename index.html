@@ -89,7 +89,8 @@
   .tv.plegada .cabTv .flecha{display:inline-block}
   .tv:not(.plegada) .cabTv .flecha{transform:rotate(90deg);display:inline-block}
   .tv.plegada h2{margin:0}
-  #actualizarArriba{background:#555;font-size:15px;padding:11px 18px}
+  #actualizarArriba{background:#1a7f37;font-size:16px;padding:13px 22px;font-weight:bold}
+  .cajaArriba{position:sticky;top:0;z-index:5}
   .tv h2 small{font-size:13px;font-weight:normal;color:#666}
   .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
   .slot{background:#f5f7fb;border:1px solid #e0e5ee;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
@@ -239,39 +240,25 @@
   </div>
   <div id="pestPantallas" class="panelPest activa">
   <div class="caja">
-    <h2>Cómo funciona</h2>
-    <p class="nota" style="margin:0;font-size:14px;line-height:1.6">
-      Pegá en cada casillero el link de YouTube del video (conviene subirlo como <b>"No listado"</b>,
-      así solo lo ve quien tiene el link). Cada TV pasa sus videos en orden (1, 2, 3, 4) y vuelve a empezar;
-      los casilleros vacíos se saltean. Cuando termines, tocá <b>Descargar lista</b> y subí ese archivo a GitHub.</p>
-  </div>
-  <div class="caja">
-    <h2>Horario de las pantallas</h2>
-    <label style="font-size:15px"><input type="checkbox" id="horActivo"> Dejar las pantallas en negro fuera de horario</label>
-    <div style="display:flex;gap:16px;align-items:end;margin-top:12px;flex-wrap:wrap">
-      <label style="margin:0">Se ven desde<input type="time" id="horDesde" value="07:00" style="width:130px"></label>
-      <label style="margin:0">hasta<input type="time" id="horHasta" value="22:00" style="width:130px"></label>
-    </div>
-    <div class="dias" id="horDias"></div>
-    <label style="display:block;margin-top:16px">Calidad de los videos
+    <h2>Calidad de los videos</h2>
+    <label>Calidad
       <select id="calidad" style="display:block;margin-top:4px;padding:9px;font-size:15px;border:1px solid #bbb;border-radius:6px">
-        <option value="">Automática (recomendada)</option>
-        <option value="hd1080">1080p</option>
+        <option value="">Automática</option>
+        <option value="hd1080">1080p (recomendada)</option>
         <option value="hd720">720p</option>
         <option value="large">480p</option>
         <option value="medium">360p</option>
       </select></label>
-    <p class="nota">Es un pedido a YouTube: si la conexión no da, baja la calidad igual. Con internet lento conviene 720p.</p>
+    <p class="nota">Es un pedido a YouTube: si la conexión no da, baja la calidad igual.</p>
     <label style="display:block;margin-top:14px">Ajuste de imagen en las TV
       <select id="escala" style="display:block;margin-top:4px;padding:9px;font-size:15px;border:1px solid #bbb;border-radius:6px">
-        <option value="forzado">Forzar 1080p (recomendado)</option>
+        <option value="forzado">Forzar 1080p</option>
         <option value="normal">Normal (si se ven líneas o rayas)</option>
       </select></label>
-    <p class="nota">La TV queda encendida pero con la pantalla en negro. No se apaga sola: eso lo tiene que hacer el temporizador del televisor o un enchufe inteligente.</p>
   </div>
   <div id="tvs"></div>
-  <div class="caja" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-    <button id="actualizarArriba">Actualizar las TV ahora</button>
+  <div class="caja cajaArriba" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    <button id="actualizarArriba">🔄 Actualizar las TV ahora</button>
     <span class="nota" style="margin:0">Hace que las 6 pantallas recarguen la página y tomen la última versión.</span>
   </div>
   <div class="caja">
@@ -292,7 +279,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 50</p>
+  <p class="version">Versión 51</p>
   </div>
 </div>
 
@@ -300,7 +287,7 @@
 <script>
   var q = location.search;
   if (q.indexOf('config') < 0) {
-    var VERSION = '50';
+    var VERSION = '51';
     var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes', patio:'TV Patio' };
     var $ = function(id){ return document.getElementById(id); };
     var v = $('v'), menu = $('menu'), capa = $('capa'), aviso = $('aviso'), msg = $('msg'), cargando = $('cargando');
@@ -565,7 +552,7 @@
     function minutosAhora(){ var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
     function aMinutos(t){ var p = String(t || '').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
     function horarioDeEstaTV(){
-      if (horarios && actual && horarios[actual] && horarios[actual].propio) return horarios[actual];
+      if (horarios && actual && horarios[actual]) return horarios[actual];
       return horario;
     }
     function diaOk(h, dia){ return !h.dias || !h.dias.length || h.dias.indexOf(dia) > -1; }
@@ -946,7 +933,7 @@
     caja.innerHTML = `<h2 class="cabTv"><span><span class="flecha">▶</span> ${nombre}</span> <small class="cuenta">Sin videos</small></h2>
       <div class="cuerpoTv"><div class="slots"></div>
       <div class="propio" data-tv="${clave}">
-        <label style="font-size:14px;margin:0"><input type="checkbox" class="propioActivo"> Horario propio para ${nombre}</label>
+        <label style="font-size:14px;margin:0"><input type="checkbox" class="propioActivo"> Apagar ${nombre} fuera de horario</label>
         <div class="campos">
           <div style="display:flex;gap:16px;align-items:end;flex-wrap:wrap">
             <label style="margin:0;font-size:13px">Se ve desde<input type="time" class="pDesde" value="07:00"></label>
@@ -989,7 +976,6 @@
     const d = (dias && dias.length) ? dias : [0,1,2,3,4,5,6];
     cont.querySelectorAll('input').forEach(i => { i.checked = d.indexOf(+i.value) > -1; });
   }
-  armarDias($('horDias'));
 
   const propios = {};
   document.querySelectorAll('.propio').forEach(el => {
@@ -1034,8 +1020,7 @@
     const L = { v: String(Date.now()), slots: {}, yt: {}, calidad: $('calidad').value,
                 escala: $('escala').value, horarios: {},
                 recargar: pedirRecarga ? String(Date.now()) : (guardadoPrevio && guardadoPrevio.recargar) || '',
-                horario: { activo: $('horActivo').checked, desde: $('horDesde').value || '07:00',
-                           hasta: $('horHasta').value || '22:00', dias: leerDias($('horDias')) } };
+                horario: null };
     L.promos = promosUI.filter(u => u.idFoto && (u.titulo.value.trim() || u.ahora.value.trim())).map(u => ({
       img: u.idFoto,
       titulo: u.titulo.value.trim(),
@@ -1049,7 +1034,7 @@
     }));
     pantallas.forEach(([clave]) => {
       const p = propios[clave];
-      L.horarios[clave] = { propio: p.activo.checked, activo: true, desde: p.desde.value || '07:00',
+      L.horarios[clave] = { propio: true, activo: p.activo.checked, desde: p.desde.value || '07:00',
                             hasta: p.hasta.value || '22:00', dias: leerDias(p.dias) };
     });
     pantallas.forEach(([clave]) => {
@@ -1061,7 +1046,7 @@
     return JSON.stringify(L, null, 1);
   }
 
-  ['horActivo','horDesde','horHasta','calidad','escala'].forEach(id => $(id).addEventListener('change', hayCambios));
+  ['calidad','escala'].forEach(id => $(id).addEventListener('change', hayCambios));
 
   // Carga lo que ya está guardado (primero desde GitHub, que siempre está al día)
   async function listaGuardada(){
@@ -1095,17 +1080,11 @@
       }
       resumen(u);
     });
-    if (L.horario) {
-      $('horActivo').checked = !!L.horario.activo;
-      if (L.horario.desde) $('horDesde').value = L.horario.desde;
-      if (L.horario.hasta) $('horHasta').value = L.horario.hasta;
-      ponerDias($('horDias'), L.horario.dias);
-    }
     if (L.horarios) pantallas.forEach(([clave]) => {
       const h = L.horarios[clave], p = propios[clave];
       if (!h || !p) return;
-      p.activo.checked = !!h.propio;
-      p.el.classList.toggle('abierto', !!h.propio);
+      p.activo.checked = h.activo !== false && h.propio !== false;
+      p.el.classList.toggle('abierto', p.activo.checked);
       if (h.desde) p.desde.value = h.desde;
       if (h.hasta) p.hasta.value = h.hasta;
       ponerDias(p.dias, h.dias);
