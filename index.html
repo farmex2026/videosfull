@@ -2216,7 +2216,15 @@ async function tabCombosTienda(){
 // ranking de comida y cafetería del mes, del mismo reporte de combos
 function bloqueRanking(CO){
   const meses=[...new Set(Object.values(CO).map(c=>c.hasta.slice(0,7)))].sort().reverse();
-  if(!meses.length) return '';
+  const conProd=Object.values(CO).some(c=>c.prod&&Object.keys(c.prod).length);
+  if(!meses.length) return `<div class="tarjeta">
+    <h2>Ranking de comida y cafetería</h2>
+    <p class="vacio">Sale de los mismos reportes que cargás arriba.<br>Subí los tres y aparece acá.</p></div>`;
+  if(!conProd) return `<div class="tarjeta">
+    <h2>Ranking de comida y cafetería</h2>
+    <p class="vacio">Los cortes que tenés cargados se guardaron antes de que existiera el ranking,
+      así que no tienen el detalle por producto.<br>
+      Volvé a subir los tres reportes del período y el ranking aparece solo.</p></div>`;
   const ym=(S.rkMes&&meses.includes(S.rkMes))?S.rkMes:meses[0];
   const R=rankingMes(CO,ym);
   const soloCombo=S.rkSolo==='combo', soloSuelto=S.rkSolo==='suelto';
