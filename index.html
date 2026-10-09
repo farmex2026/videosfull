@@ -573,6 +573,8 @@ tr.pl-min td{background:rgba(34,227,245,.06)}
 .plata-panel td,.plata-panel th{padding:6px 6px;white-space:nowrap}
 .plata-panel th{font-size:10px}
 @media(max-width:1100px){.plata-panel{max-width:100%}}
+.ver-panel{margin-top:14px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--tinta-suave);opacity:.75}
 .fac-item{border:1px solid var(--linea-2);border-radius:var(--r);margin-top:8px}
 .fac-item>summary{list-style:none;cursor:pointer;padding:9px 12px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .fac-item>summary::-webkit-details-marker{display:none}
@@ -3184,6 +3186,7 @@ async function provVenc(){
   return S.provV;
 }
 const guardarProvV=()=>guardar('tienda:proveedores',S.provV);
+const VERSION='5.1';
 const DIAS_GRACIA=5;    // lo vencido se sigue viendo estos días
 const DIAS_AVISO=30;    // se marca lo que vence dentro de este plazo
 async function vencimientos(){
@@ -4526,6 +4529,7 @@ function portada(){
     <input type="password" id="claveEntrada" inputmode="numeric" autocapitalize="off" autocomplete="off" spellcheck="false"
       placeholder="Clave" style="text-align:center;font-family:'IBM Plex Mono',monospace;letter-spacing:.3em">
     <button class="btn" id="entrar">Entrar</button>
+    <p class="ver-panel">versión ${VERSION}</p>
   </div></div>`;
 }
 
