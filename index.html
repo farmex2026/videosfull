@@ -174,6 +174,23 @@
   .promo .tvs label{display:inline-flex;align-items:center;gap:4px;background:#eef1f6;padding:5px 9px;border-radius:6px;font-size:12px;cursor:pointer}
   .promo .pie{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
   .promo .pie .estado{flex:1}
+  .hoja h1{font-size:24px;color:#1c3f8f}
+  .hoja h2{font-size:18px;margin:22px 0 8px;color:#1c3f8f}
+  .hoja ol,.hoja ul{font-size:15px;line-height:1.7;padding-left:22px}
+  .hoja li{margin-bottom:8px}
+  .hoja img{display:block;max-width:100%;margin:10px 0 14px;border:1px solid #d5dbe6;border-radius:6px}
+  .tablaInst{width:100%;border-collapse:collapse;font-size:14px}
+  .tablaInst th,.tablaInst td{border:1px solid #d5dbe6;padding:8px;text-align:left}
+  .tablaInst th{background:#eef1f6}
+  a.boton{display:inline-block;padding:9px 16px;font-size:14px;border-radius:6px;background:#1c3f8f;color:#fff;text-decoration:none}
+  @media print{
+    body.cfg{background:#fff;padding:0}
+    .pestanas,.noImprimir,#barraGuardar,.caja:not(.hoja),#tvs,#promos{display:none !important}
+    #config{max-width:none;padding:0}
+    .hoja{border:0;padding:0}
+    .panelPest{display:none}
+    #pestInstructivo{display:block !important}
+  }
   .pestanas{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
   .pest{padding:10px 18px;font-size:15px;border:0;border-radius:8px 8px 0 0;background:#dde3ee;color:#33415c;cursor:pointer}
   .pest.activa{background:#1c3f8f;color:#fff}
@@ -232,8 +249,75 @@
   <h1>Configuración de pantallas</h1>
   <div class="pestanas">
     <button class="pest activa" data-pest="pantallas">Pantallas y promos</button>
-    <button class="pest" data-pest="drive">Drive (beta)</button>
+    <button class="pest" data-pest="instructivo">Instructivo</button>
+    <button class="pest" data-pest="drive">🔒 Drive (beta)</button>
     <button class="pest" data-pest="foto">Foto vencimiento</button>
+  </div>
+  <div id="pestInstructivo" class="panelPest">
+    <div class="caja noImprimir" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button onclick="window.print()">🖨 Imprimir</button>
+      <a class="boton" href="instructivo/instructivo.pdf" download>⬇ Descargar PDF</a>
+      <span class="nota" style="margin:0">Para dejarlo impreso al lado de la computadora.</span>
+    </div>
+    <div class="caja hoja" id="hojaInstructivo">
+      <h1 style="margin-top:0">Cómo cargar videos en las pantallas de Tienda Full</h1>
+
+      <h2>1. Subir el video a YouTube</h2>
+      <ol>
+        <li>Entrá a <b>youtube.com</b> con la cuenta de la estación.</li>
+        <li>Arriba a la derecha tocá <b>Crear</b> y elegí <b>Subir video</b>.
+          <img src="instructivo/paso1.png" alt="Botón Crear">
+          <img src="instructivo/paso2.png" alt="Opción Subir video" style="max-width:260px">
+        </li>
+        <li>Arrastrá el archivo del video o tocá <b>Seleccionar archivos</b>.
+          <img src="instructivo/paso3.png" alt="Ventana para subir el video">
+        </li>
+        <li>Poné un <b>título</b> que se entienda, por ejemplo: <i>Promo milanesas - noviembre</i>.</li>
+        <li>Más abajo, donde pregunta si es contenido para niños, marcá <b>No, no es contenido creado para niños</b>.</li>
+        <li>Esperá hasta que abajo diga <b>Se completaron las verificaciones. No se encontraron problemas</b> y
+            aparezcan los íconos de subida y <b>HD</b>: eso quiere decir que el video ya subió bien.
+            Recién ahí tocá <b>Siguiente</b> tres veces, sin completar nada más.
+          <img src="instructivo/paso4.png" alt="Pantalla de detalles">
+        </li>
+        <li>Llegás a la pantalla <b>Visibilidad</b>. Marcá <b>No listado</b>: solo lo ve quien tiene el link.
+            <b>No marques Privado</b>, porque las TV no lo pueden mostrar.</li>
+        <li>Tocá <b>Guardar</b> y copiá el <b>Vínculo del video</b> (es cortito, tipo <code>https://youtu.be/AbCd1234</code>).
+          <img src="instructivo/paso5.png" alt="Pantalla de visibilidad">
+        </li>
+      </ol>
+
+      <h2>2. Cargarlo en las pantallas</h2>
+      <ol>
+        <li>Entrá a <b>farmex2026.github.io/videosfull/?menu</b> y tocá <b>⚙ Configuración</b>.
+          <img src="instructivo/paso6.png" alt="Menú de pantallas">
+        </li>
+        <li>Tocá la TV donde querés que se vea (TV 1, TV 2, TV 3, TV 4, TV Boxes o TV Patio). Se despliega.</li>
+        <li>Pegá el link en <b>Video 1</b>. Si esa TV ya tenía un video y querés que pase los dos, pegalo en <b>Video 2</b>.</li>
+        <li>Fijate que aparezca la vista previa del video.</li>
+        <li>Abajo de todo tocá el botón <b>Guardar en las TV</b>.</li>
+        <li>Esperá a que aparezca en verde <b>✓ Guardado … Las TV se actualizan en un par de minutos.</b></li>
+        <li>Por último tocá <b>Recargar las TV ahora</b> para que lo tomen enseguida.
+          <img src="instructivo/paso7.png" alt="Configuración con el link cargado">
+        </li>
+      </ol>
+
+      <h2>Cosas para tener en cuenta</h2>
+      <ul>
+        <li>Cada TV pasa sus videos <b>en orden</b> (Video 1, 2, 3, 4) y vuelve a empezar sola.</li>
+        <li>Para <b>sacar</b> un video, tocá <b>Quitar</b> en ese casillero y guardá.</li>
+        <li>Los videos van <b>sin sonido</b>: todo lo importante tiene que verse en pantalla.</li>
+        <li>Si una pantalla está negra, es el horario de esa TV: se apagan y se prenden solas.</li>
+      </ul>
+
+      <h2>Si algo no anda</h2>
+      <table class="tablaInst">
+        <tr><th>Qué pasa</th><th>Qué hacer</th></tr>
+        <tr><td>La TV no muestra el video nuevo</td><td>Esperá 5 minutos o tocá <b>Recargar las TV ahora</b></td></tr>
+        <tr><td>Dice "No hay videos cargados"</td><td>El link no quedó guardado: pegalo de nuevo y guardá</td></tr>
+        <tr><td>Se ve en la compu pero no en la TV</td><td>Revisá que en YouTube esté como <b>No listado</b>, no Privado</td></tr>
+        <tr><td>La pantalla está toda negra</td><td>Es el horario: fijate la hora de encendido de esa TV</td></tr>
+      </table>
+    </div>
   </div>
   <div id="pestDrive" class="panelPest">
     <div class="caja">
@@ -295,7 +379,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 54</p>
+  <p class="version">Versión 55</p>
   </div>
 </div>
 
@@ -303,7 +387,7 @@
 <script>
   var q = location.search;
   if (q.indexOf('config') < 0) {
-    var VERSION = '54';
+    var VERSION = '55';
     var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes', patio:'TV Patio', beta:'TV Beta' };
     var $ = function(id){ return document.getElementById(id); };
     var v = $('v'), menu = $('menu'), capa = $('capa'), aviso = $('aviso'), msg = $('msg'), cargando = $('cargando');
@@ -1415,14 +1499,24 @@
   $('actualizarArriba').onclick = () => guardar(true);
 
   // Pestañas
+  const CLAVE_DRIVE = '2026';
+  let driveAbierto = false;
   document.querySelectorAll('.pest').forEach(b => {
     b.onclick = () => {
+      if (b.dataset.pest === 'drive' && !driveAbierto) {
+        var cl = prompt('Clave para entrar a Drive (beta):');
+        if (cl === null) return;
+        if (cl.trim() !== CLAVE_DRIVE) { alert('Clave incorrecta.'); return; }
+        driveAbierto = true;
+      }
       document.querySelectorAll('.pest').forEach(x => x.classList.remove('activa'));
       document.querySelectorAll('.panelPest').forEach(x => x.classList.remove('activa'));
       b.classList.add('activa');
-      var panel = b.dataset.pest === 'foto' ? 'pestFoto' : b.dataset.pest === 'drive' ? 'pestDrive' : 'pestPantallas';
+      var panel = b.dataset.pest === 'foto' ? 'pestFoto'
+                : b.dataset.pest === 'drive' ? 'pestDrive'
+                : b.dataset.pest === 'instructivo' ? 'pestInstructivo' : 'pestPantallas';
       $(panel).classList.add('activa');
-      $('barraGuardar').style.display = b.dataset.pest === 'foto' ? 'none' : '';
+      $('barraGuardar').style.display = (b.dataset.pest === 'foto' || b.dataset.pest === 'instructivo') ? 'none' : '';
     };
   });
 
