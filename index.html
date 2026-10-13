@@ -282,7 +282,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 52</p>
+  <p class="version">Versión 53</p>
   </div>
 </div>
 
@@ -290,7 +290,7 @@
 <script>
   var q = location.search;
   if (q.indexOf('config') < 0) {
-    var VERSION = '52';
+    var VERSION = '53';
     var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes', patio:'TV Patio' };
     var $ = function(id){ return document.getElementById(id); };
     var v = $('v'), menu = $('menu'), capa = $('capa'), aviso = $('aviso'), msg = $('msg'), cargando = $('cargando');
@@ -421,14 +421,16 @@
     function ajustarEscala(){
       var marco = $('yt').getElementsByTagName('iframe')[0];
       if (!marco) return;
+      var DEMAS = 1.02; // 2% de más para que los bordes del reproductor queden afuera
       if (!escalar) { // modo normal: el reproductor ocupa la pantalla tal cual
-        marco.style.transform = 'none'; marco.style.left = '0'; marco.style.top = '0';
-        marco.style.width = '100%'; marco.style.height = '100%';
+        marco.style.width = '102%'; marco.style.height = '102%';
+        marco.style.transform = 'none';
+        marco.style.left = '-1%'; marco.style.top = '-1%';
         return;
       }
       marco.style.width = '1920px'; marco.style.height = '1080px';
       var w = window.innerWidth || 1920, h = window.innerHeight || 1080;
-      var e = Math.min(w / 1920, h / 1080);
+      var e = Math.min(w / 1920, h / 1080) * DEMAS;
       marco.style.transform = 'scale(' + e + ')';
       marco.style.left = Math.round((w - 1920 * e) / 2) + 'px';
       marco.style.top = Math.round((h - 1080 * e) / 2) + 'px';
