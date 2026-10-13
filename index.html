@@ -37,6 +37,8 @@
   #promo.full #promoTexto{position:relative;width:100%;padding:3vh 4vw;background:linear-gradient(transparent,rgba(0,0,0,.8) 35%)}
   #negro{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:13}
   #yt{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000}
+  #dr{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000;overflow:hidden}
+  #dr iframe{position:absolute;top:-1%;left:-1%;width:102%;height:102%;border:0}
   #yt{overflow:hidden}
   #yt iframe{position:absolute;top:0;left:0;width:1920px;height:1080px;border:0;pointer-events:none;
        transform-origin:0 0}
@@ -193,6 +195,7 @@
   <a href="#" data-clave="tienda4">TV 4</a>
   <a href="#" data-clave="boxes">TV Boxes</a>
   <a href="#" data-clave="patio">TV Patio</a>
+  <a href="#" data-clave="beta">TV Beta (Drive)</a>
 </div>
 <div id="capa">
   <p id="capaNombre"></p>
@@ -208,6 +211,7 @@
 
 <video id="v" autoplay muted playsinline></video>
 <div id="yt"><div id="ytPlayer"></div></div>
+<div id="dr"><iframe id="drMarco" allow="autoplay" allowfullscreen></iframe></div>
 <div id="promo">
   <div id="promoFondo"></div>
   <div id="promoCaja">
@@ -228,7 +232,16 @@
   <h1>Configuración de pantallas</h1>
   <div class="pestanas">
     <button class="pest activa" data-pest="pantallas">Pantallas y promos</button>
+    <button class="pest" data-pest="drive">Drive (beta)</button>
     <button class="pest" data-pest="foto">Foto vencimiento</button>
+  </div>
+  <div id="pestDrive" class="panelPest">
+    <div class="caja">
+      <h2>Videos desde Google Drive — TV Beta</h2>
+      <p class="nota" style="margin:0 0 12px">Pegá el link del video de Drive (compartido como "Cualquier persona con el enlace")
+        y la duración en segundos, porque Drive no avisa cuándo termina. Se pasan en orden y vuelven a empezar.</p>
+      <div id="driveSlots"></div>
+    </div>
   </div>
   <div id="pestFoto" class="panelPest">
     <div class="caja">
@@ -282,7 +295,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 53</p>
+  <p class="version">Versión 54</p>
   </div>
 </div>
 
@@ -290,8 +303,8 @@
 <script>
   var q = location.search;
   if (q.indexOf('config') < 0) {
-    var VERSION = '53';
-    var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes', patio:'TV Patio' };
+    var VERSION = '54';
+    var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes', patio:'TV Patio', beta:'TV Beta' };
     var $ = function(id){ return document.getElementById(id); };
     var v = $('v'), menu = $('menu'), capa = $('capa'), aviso = $('aviso'), msg = $('msg'), cargando = $('cargando');
     var actual = null, versionActual = null, intervalo = null, timerCapa = null, timerCursor = null;
@@ -637,7 +650,7 @@
       }
     }
     function vigilar(){
-      if (!actual || enNegro || enPromo) { marcarOk(); return; }
+      if (!actual || enNegro || enPromo || modoDrive) { marcarOk(); return; }
       var ahora = new Date().getTime();
       if (modoYT) {
         var est = (yt && ytListo && yt.getPlayerState) ? yt.getPlayerState() : -1;
@@ -705,6 +718,37 @@
       }, (p.seg ? +p.seg : 8) * 1000);
     }
 
+    // ---- Videos de Google Drive ----
+    var drives = [], drIdx = 0, modoDrive = false, timerDrive = null;
+    function pararDrive(){
+      clearTimeout(timerDrive);
+      modoDrive = false;
+      $('dr').style.display = 'none';
+      $('drMarco').src = 'about:blank';
+    }
+    function pasarDrive(){
+      if (!modoDrive || !drives.length) return;
+      var p = drives[drIdx % drives.length];
+      drIdx++;
+      $('drMarco').src = 'https://drive.google.com/file/d/' + p.id + '/preview?autoplay=1';
+      cargando.style.display = 'none';
+      clearTimeout(timerDrive);
+      timerDrive = setTimeout(function(){
+        if (!modoDrive) return;
+        mostrarPromo(function(){ if (modoDrive) pasarDrive(); });
+      }, ((+p.seg || 60) + 2) * 1000);
+    }
+    function ponerDrive(lista2){
+      pararYT();
+      v.pause(); v.removeAttribute('src'); try{ v.load(); }catch(e){}
+      v.style.display = 'none';
+      if (!lista2.length) { pararDrive(); sinVideo(); return; }
+      modoDrive = true; drives = lista2; drIdx = 0;
+      msg.style.display = 'none';
+      $('dr').style.display = 'block';
+      pasarDrive();
+    }
+
     function mostrarCapa(){
       var ahora = new Date();
       $('capaNombre').innerHTML = (nombres[actual] || '') +
@@ -730,7 +774,7 @@
       cortarDescargas();
       v.pause(); v.removeAttribute('src'); try{ v.load(); }catch(e){}
       liberar(lista); lista = [];
-      pararYT();
+      pararYT(); pararDrive();
       v.style.display = 'none'; msg.style.display = 'none'; aviso.style.display = 'none'; cargando.style.display = 'none';
       ocultarCapa();
       document.body.className = '';
@@ -762,6 +806,9 @@
         promos = (L && L.promos) || [];
         horario = L ? L.horario : null; horarios = L ? L.horarios : null;
         arrancarHorario(); arrancarVigilancia();
+        var dr = (L && L.drive && L.drive[clave]) || [];
+        if (dr.length) { ponerDrive(dr); arrancarChequeo(); return; }
+        pararDrive();
         if (L && L.recargar) { try { localStorage.setItem('recargar', String(L.recargar)); } catch(e){} }
         if (L && L.yt) { versionActual = L.v; ponerYT(L.yt[clave] || []); arrancarChequeo(); return; }
         pararYT();
@@ -801,6 +848,9 @@
           promos = L.promos || [];
           horario = L.horario; horarios = L.horarios; revisarHorario();
           if (L.v === versionActual) return;
+          var dr2 = (L.drive && L.drive[actual]) || [];
+          if (dr2.length) { versionActual = L.v; ponerDrive(dr2); return; }
+          if (modoDrive) pararDrive();
           if (L.yt) { versionActual = L.v; ponerYT(L.yt[actual] || []); return; }
           var c = actual, mio = turno;
           actualizando = true;
@@ -919,7 +969,7 @@
   document.body.className = 'cfg';
   $('config').style.display = 'block';
 
-  const pantallas = [['tienda1','TV 1'],['tienda2','TV 2'],['tienda3','TV 3'],['tienda4','TV 4'],['boxes','TV Boxes'],['patio','TV Patio']];
+  const pantallas = [['tienda1','TV 1'],['tienda2','TV 2'],['tienda3','TV 3'],['tienda4','TV 4'],['boxes','TV Boxes'],['patio','TV Patio'],['beta','TV Beta']];
   const LUGARES = 4;
   const slots = [];
 
@@ -1026,6 +1076,8 @@
                 escala: $('escala').value, horarios: {},
                 recargar: pedirRecarga ? String(Date.now()) : (guardadoPrevio && guardadoPrevio.recargar) || '',
                 horario: null };
+    L.drive = { beta: driveUI.map(u => ({ id: idDrive(u.link.value.trim()), seg: +u.seg.value || 0 }))
+                              .filter(x => x.id && x.seg) };
     L.promos = promosUI.filter(u => u.idFoto && (u.titulo.value.trim() || u.ahora.value.trim())).map(u => ({
       img: u.idFoto,
       titulo: u.titulo.value.trim(),
@@ -1069,6 +1121,13 @@
     if (!L) return;
     if (L.calidad !== undefined) $('calidad').value = L.calidad || '';
     if (L.escala) $('escala').value = L.escala;
+    const dr = (L.drive && L.drive.beta) || [];
+    driveUI.forEach((u, i) => {
+      const d = dr[i];
+      u.link.value = d ? 'https://drive.google.com/file/d/' + d.id + '/view' : '';
+      u.seg.value = d ? d.seg : '';
+      verDrive(u);
+    });
     (L.promos || []).forEach((p, i) => {
       const u = promosUI[i];
       if (!u) return;
@@ -1140,6 +1199,32 @@
   }
   const guardarEnGitHub = json => mandar({ accion: 'guardar', datos: JSON.parse(json) });
   const subirFoto = (nombre, datos) => mandar({ accion: 'foto', nombre, datos });
+
+  // ---- Videos de Drive (TV Beta) ----
+  const driveUI = [];
+  for (let i = 0; i < 4; i++) {
+    const el = document.createElement('div');
+    el.className = 'fila';
+    el.innerHTML = `<b>Video ${i + 1}</b>
+      <input type="text" class="dLink" placeholder="Link de Drive" style="flex:2;min-width:220px;padding:8px;border:1px solid #bbb;border-radius:6px">
+      <input type="number" class="dSeg" placeholder="segundos" min="5" style="width:110px;padding:8px;border:1px solid #bbb;border-radius:6px">
+      <span class="estado"></span>`;
+    const u = { link: el.querySelector('.dLink'), seg: el.querySelector('.dSeg'), estado: el.querySelector('.estado') };
+    [u.link, u.seg].forEach(c => c.addEventListener('input', () => { hayCambios(); verDrive(u); }));
+    driveUI.push(u);
+    $('driveSlots').appendChild(el);
+  }
+  function idDrive(link){
+    const m = String(link).match(/\/d\/([a-zA-Z0-9_-]{20,})/) || String(link).match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
+    return m ? m[1] : null;
+  }
+  function verDrive(u){
+    const t = u.link.value.trim();
+    if (!t) { u.estado.textContent = ''; return; }
+    const id = idDrive(t);
+    u.estado.className = id ? 'estado ok' : 'estado error';
+    u.estado.textContent = id ? (u.seg.value ? '✓ Listo' : 'Falta la duración en segundos') : 'Ese link no parece de Drive';
+  }
 
   // ---- Promos ----
   const MAXPROMOS = 6;
@@ -1335,7 +1420,8 @@
       document.querySelectorAll('.pest').forEach(x => x.classList.remove('activa'));
       document.querySelectorAll('.panelPest').forEach(x => x.classList.remove('activa'));
       b.classList.add('activa');
-      $(b.dataset.pest === 'foto' ? 'pestFoto' : 'pestPantallas').classList.add('activa');
+      var panel = b.dataset.pest === 'foto' ? 'pestFoto' : b.dataset.pest === 'drive' ? 'pestDrive' : 'pestPantallas';
+      $(panel).classList.add('activa');
       $('barraGuardar').style.display = b.dataset.pest === 'foto' ? 'none' : '';
     };
   });
