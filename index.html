@@ -13,6 +13,8 @@
         gap:1.4vh;padding:2vh 0;box-sizing:border-box;overflow:auto}
   #menu h1{font-size:3.4vh;margin:1vh 0 0;font-weight:normal}
   #verMenu{font-size:1.9vh;color:#777;margin:0}
+  #menu a.mini{width:auto;padding:2px 8px;font-size:1.4vh;background:transparent;color:#444;border:0}
+  #menu a.mini:focus,#menu a.mini:hover{color:#999;border-color:transparent}
   #menu a{display:block;width:min(340px,80vw);padding:1.8vh;font-size:3vh;text-align:center;color:#fff;
           text-decoration:none;background:#1c3f8f;border:3px solid transparent;border-radius:10px;box-sizing:border-box}
   #menu a:focus,#menu a:hover{border-color:#ffd100;outline:none;background:#2a57c4}
@@ -207,6 +209,7 @@
 </head>
 <body>
 <div id="menu">
+  <a class="mini" href="#" data-clave="lucas">lucas</a>
   <a class="chico" href="?config">⚙ Configuración</a>
   <div id="verMenu"></div>
   <h1>Elegí esta pantalla</h1>
@@ -339,6 +342,11 @@
       <p class="nota" style="margin:0 0 12px">Pegá el link del video de Drive (compartido como "Cualquier persona con el enlace")
         y la duración en segundos, porque Drive no avisa cuándo termina. Se pasan en orden y vuelven a empezar.</p>
       <div id="driveSlots"></div>
+      <hr style="margin:20px 0;border:0;border-top:1px solid #e0e5ee">
+      <label style="font-size:14px">Link en vivo (.m3u8) — pantalla <b>lucas</b>
+        <input type="text" id="vivo" placeholder="https://.../index.m3u8?..."
+               style="width:100%;box-sizing:border-box;margin-top:4px;padding:9px;border:1px solid #bbb;border-radius:6px"></label>
+      <p class="nota">Suele venir con un token que vence: cuando deje de andar, pegá el link nuevo.</p>
     </div>
   </div>
   <div id="pestFoto" class="panelPest">
@@ -393,7 +401,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 60</p>
+  <p class="version">Versión 61</p>
   </div>
 </div>
 
@@ -401,8 +409,8 @@
 <script>
   var q = location.search;
   if (q.indexOf('config') < 0) {
-    var VERSION = '60';
-    var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes', patio:'TV Patio', beta:'TV Beta', sacoma:'TV Boxes Sacoma' };
+    var VERSION = '61';
+    var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes', patio:'TV Patio', beta:'TV Beta', sacoma:'TV Boxes Sacoma', lucas:'lucas' };
     var $ = function(id){ return document.getElementById(id); };
     var v = $('v'), menu = $('menu'), capa = $('capa'), aviso = $('aviso'), msg = $('msg'), cargando = $('cargando');
     var actual = null, versionActual = null, intervalo = null, timerCapa = null, timerCursor = null;
@@ -750,7 +758,7 @@
       }
     }
     function vigilar(){
-      if (!actual || enNegro || enPromo || modoDrive) { marcarOk(); return; }
+      if (!actual || enNegro || enPromo || modoDrive || modoVivo) { marcarOk(); return; }
       var ahora = new Date().getTime();
       if (modoYT) {
         var est = (yt && ytListo && yt.getPlayerState) ? yt.getPlayerState() : -1;
@@ -849,6 +857,45 @@
       pasarDrive();
     }
 
+    // ---- Stream en vivo (m3u8) ----
+    var hls = null, modoVivo = false;
+    function pararVivo(){
+      modoVivo = false;
+      if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
+      v.pause(); v.removeAttribute('src'); try{ v.load(); }catch(e){}
+    }
+    function ponerVivo(url){
+      pararYT(); pararDrive();
+      if (!url) { sinVideo(); return; }
+      modoVivo = true;
+      msg.style.display = 'none';
+      cargando.style.display = 'none';
+      v.style.display = 'block';
+      v.loop = false;
+      if (v.canPlayType('application/vnd.apple.mpegurl')) { v.src = url; play(); return; }
+      var arrancar = function(){
+        if (hls) { try { hls.destroy(); } catch(e){} }
+        hls = new Hls({ lowLatencyMode: true });
+        hls.loadSource(url);
+        hls.attachMedia(v);
+        hls.on(Hls.Events.MANIFEST_PARSED, function(){ play(); });
+        hls.on(Hls.Events.ERROR, function(e, d){
+          if (!d || !d.fatal) return;
+          if (d.type === 'networkError') { try { hls.startLoad(); } catch(x){} }
+          else if (d.type === 'mediaError') { try { hls.recoverMediaError(); } catch(x){} }
+        });
+      };
+      if (window.Hls && Hls.isSupported()) { arrancar(); return; }
+      var sc = document.createElement('script');
+      sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js';
+      sc.onload = function(){
+        if (window.Hls && Hls.isSupported()) arrancar();
+        else { msg.innerHTML = 'Esta pantalla no puede reproducir este tipo de video'; msg.style.display = 'flex'; }
+      };
+      sc.onerror = function(){ msg.innerHTML = 'No se pudo cargar el reproductor'; msg.style.display = 'flex'; };
+      document.getElementsByTagName('head')[0].appendChild(sc);
+    }
+
     function mostrarCapa(){
       var ahora = new Date();
       $('capaNombre').innerHTML = (nombres[actual] || '') +
@@ -874,7 +921,7 @@
       cortarDescargas();
       v.pause(); v.removeAttribute('src'); try{ v.load(); }catch(e){}
       liberar(lista); lista = [];
-      pararYT(); pararDrive();
+      pararYT(); pararDrive(); pararVivo();
       v.style.display = 'none'; msg.style.display = 'none'; aviso.style.display = 'none'; cargando.style.display = 'none';
       ocultarCapa();
       document.body.className = '';
@@ -906,6 +953,8 @@
         promos = (L && L.promos) || [];
         horario = L ? L.horario : null; horarios = L ? L.horarios : null;
         arrancarHorario(); arrancarVigilancia();
+        if (clave === 'lucas') { ponerVivo(L && L.vivo); arrancarChequeo(); return; }
+        pararVivo();
         var dr = (L && L.drive && L.drive[clave]) || [];
         if (dr.length) { ponerDrive(dr); arrancarChequeo(); return; }
         pararDrive();
@@ -1176,6 +1225,7 @@
                 escala: $('escala').value, horarios: {},
                 recargar: pedirRecarga ? String(Date.now()) : (guardadoPrevio && guardadoPrevio.recargar) || '',
                 horario: null };
+    L.vivo = $('vivo').value.trim();
     L.drive = { beta: driveUI.map(u => ({ id: idDrive(u.link.value.trim()), seg: +u.seg.value || 0 }))
                               .filter(x => x.id && x.seg) };
     L.promos = promosUI.filter(u => u.idFoto && (u.titulo.value.trim() || u.ahora.value.trim())).map(u => ({
@@ -1204,6 +1254,7 @@
   }
 
   ['calidad','escala'].forEach(id => $(id).addEventListener('change', hayCambios));
+  $('vivo').addEventListener('input', hayCambios);
 
   // Carga lo que ya está guardado (primero desde GitHub, que siempre está al día)
   async function listaGuardada(){
@@ -1221,6 +1272,7 @@
     if (!L) return;
     if (L.calidad !== undefined) $('calidad').value = L.calidad || '';
     if (L.escala) $('escala').value = L.escala;
+    $('vivo').value = L.vivo || '';
     const dr = (L.drive && L.drive.beta) || [];
     driveUI.forEach((u, i) => {
       const d = dr[i];
