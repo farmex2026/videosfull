@@ -219,7 +219,6 @@
   <a href="#" data-clave="tienda4">TV 4</a>
   <a href="#" data-clave="boxes">TV Boxes</a>
   <a href="#" data-clave="patio">TV Patio</a>
-  <a href="#" data-clave="sacoma">TV Boxes Sacoma</a>
   <a href="#" data-clave="beta">TV Beta (Drive)</a>
 </div>
 <div id="capa">
@@ -257,18 +256,17 @@
   <h1>Configuración de pantallas</h1>
   <div class="pestanas">
     <button class="pest activa" data-pest="pantallas">Pantallas y promos</button>
-    <button class="pest" data-pest="sacoma">SACOMA</button>
+    <button class="pest" data-pest="promos">Promos</button>
     <button class="pest" data-pest="instructivo">Instructivo</button>
     <button class="pest" data-pest="drive">🔒 Drive (beta)</button>
     <button class="pest" data-pest="foto">Foto vencimiento</button>
   </div>
-  <div id="pestSacoma" class="panelPest">
+  <div id="pestPromos" class="panelPest">
     <div class="caja">
-      <h2>SACOMA — pantallas verticales</h2>
-      <p class="nota" style="margin:0">Estas pantallas están paradas (vertical). Subí a YouTube videos
-        <b>verticales</b> (9:16, como un video de celular), si no van a quedar con franjas negras arriba y abajo.</p>
+      <h2>Promos en pantalla <small style="font-size:13px;font-weight:normal;color:#666">se muestran entre los videos</small></h2>
+      <div id="promos"></div>
+      <p class="nota">La fecha de vencimiento es solo para vos: en la TV no se muestra, pero el día que vence el cartel se saca solo.</p>
     </div>
-    <div id="tvsSacoma"></div>
   </div>
   <div id="pestInstructivo" class="panelPest">
     <div class="caja noImprimir" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
@@ -380,20 +378,10 @@
     <button id="actualizarArriba">🔄 Actualizar las TV ahora</button>
     <span class="nota" style="margin:0">Hace que las 6 pantallas recarguen la página y tomen la última versión.</span>
   </div>
-  <div class="caja plegada" id="cajaPromos">
-    <h2 class="cabTv" id="cabPromos"><span><span class="flecha">▶</span> Promos en pantalla</span>
-      <small class="cuenta" id="cuentaPromos">Sin promos</small></h2>
-    <div class="cuerpoTv">
-      <div id="promos"></div>
-      <p class="nota">La fecha de vencimiento es solo para vos: en la TV no se muestra, pero el día que vence el cartel se saca solo.</p>
-    </div>
-  </div>
   <div class="caja">
     <h2>Guardar cambios</h2>
     <button id="guardarTV" style="font-size:17px;padding:14px 24px">Guardar en las TV</button>
     <p class="estadoGuardado" id="notaGuardar">Sin cambios para guardar.</p>
-    <p style="margin:14px 0 0"><button id="recargarTV" style="background:#555">Recargar las TV ahora</button>
-      <span class="nota" style="margin-left:10px">Usalo cuando subís un index.html nuevo.</span></p>
     <p class="nota">Se guarda solo, sin claves. Se puede abrir desde cualquier PC o celular.</p>
   </div>
   <p><a href="./?menu">Volver al menú de pantallas</a></p>
@@ -401,7 +389,7 @@
     <span class="texto" id="barraTexto">Tenés cambios sin guardar</span>
     <button id="barraBoton">Guardar en las TV</button>
   </div>
-  <p class="version">Versión 61</p>
+  <p class="version">Versión 65</p>
   </div>
 </div>
 
@@ -409,8 +397,8 @@
 <script>
   var q = location.search;
   if (q.indexOf('config') < 0) {
-    var VERSION = '61';
-    var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes', patio:'TV Patio', beta:'TV Beta', sacoma:'TV Boxes Sacoma', lucas:'lucas' };
+    var VERSION = '65';
+    var nombres = { tienda1:'TV 1', tienda2:'TV 2', tienda3:'TV 3', tienda4:'TV 4', boxes:'TV Boxes', patio:'TV Patio', beta:'TV Beta', lucas:'lucas' };
     var $ = function(id){ return document.getElementById(id); };
     var v = $('v'), menu = $('menu'), capa = $('capa'), aviso = $('aviso'), msg = $('msg'), cargando = $('cargando');
     var actual = null, versionActual = null, intervalo = null, timerCapa = null, timerCursor = null;
@@ -949,6 +937,7 @@
         if (mio !== turno) return;
         if (!L) { setTimeout(function(){ if (actual === clave && turno === mio) reproducir(clave); }, 20000); }
         calidad = (L && L.calidad) || '';
+        firmaActual = firmaDe(L);
         escalar = !(L && L.escala === 'normal');
         promos = (L && L.promos) || [];
         horario = L ? L.horario : null; horarios = L ? L.horarios : null;
@@ -985,6 +974,16 @@
     }
 
     // Cada 2 minutos se fija si cambiaron los videos. Los baja por detrás y los cambia cuando están listos.
+    var firmaActual = '';
+    // Resume lo que le toca a ESTA pantalla, para no cortar el video por cambios de otra
+    function firmaDe(L){
+      if (!L) return '';
+      var yt = (L.yt && L.yt[actual]) || [];
+      var dr = (L.drive && L.drive[actual]) || [];
+      var vivo = (actual === 'lucas') ? (L.vivo || '') : '';
+      return JSON.stringify([yt, dr, vivo, (L[actual] || [])]);
+    }
+
     function arrancarChequeo(){
       clearInterval(intervalo);
       intervalo = setInterval(function(){
@@ -997,17 +996,22 @@
           promos = L.promos || [];
           horario = L.horario; horarios = L.horarios; revisarHorario();
           if (L.v === versionActual) return;
+          versionActual = L.v;
+          // Solo corta el video si cambió algo DE ESTA pantalla
+          var nueva = firmaDe(L);
+          if (nueva === firmaActual) return;
+          firmaActual = nueva;
+          if (actual === 'lucas') { ponerVivo(L.vivo); return; }
           var dr2 = (L.drive && L.drive[actual]) || [];
-          if (dr2.length) { versionActual = L.v; ponerDrive(dr2); return; }
+          if (dr2.length) { ponerDrive(dr2); return; }
           if (modoDrive) pararDrive();
-          if (L.yt) { versionActual = L.v; ponerYT(L.yt[actual] || []); return; }
+          if (L.yt) { ponerYT(L.yt[actual] || []); return; }
           var c = actual, mio = turno;
           actualizando = true;
           bajarTodos(L[c] || [], L.v, null, function(res, fallasRed){
             actualizando = false;
             if (mio !== turno || actual !== c) { liberar(res); return; }
             if (fallasRed && lista.length) { liberar(res); return; } // sin internet: sigue con lo que tenía
-            versionActual = L.v;
             ponerLista(res);
           });
         });
@@ -1118,7 +1122,7 @@
   document.body.className = 'cfg';
   $('config').style.display = 'block';
 
-  const pantallas = [['tienda1','TV 1'],['tienda2','TV 2'],['tienda3','TV 3'],['tienda4','TV 4'],['boxes','TV Boxes'],['patio','TV Patio'],['sacoma','TV Boxes Sacoma'],['beta','TV Beta']];
+  const pantallas = [['tienda1','TV 1'],['tienda2','TV 2'],['tienda3','TV 3'],['tienda4','TV 4'],['boxes','TV Boxes'],['patio','TV Patio'],['beta','TV Beta']];
   const LUGARES = 4;
   const slots = [];
 
@@ -1164,7 +1168,7 @@
       slots.push(sl);
       cont.appendChild(el);
     }
-    (clave === 'sacoma' ? $('tvsSacoma') : $('tvs')).appendChild(caja);
+    $('tvs').appendChild(caja);
   });
 
   // ---- Días de la semana ----
@@ -1439,10 +1443,10 @@
     $('promos').appendChild(el);
   }
 
-  $('cabPromos').onclick = () => $('cajaPromos').classList.toggle('plegada');
   function contarPromos(){
     const n = promosUI.filter(u => u.idFoto || u.nueva).length;
-    $('cuentaPromos').textContent = n ? `${n} promo${n > 1 ? 's' : ''} cargada${n > 1 ? 's' : ''}` : 'Sin promos';
+    const b = document.querySelector('.pest[data-pest="promos"]');
+    if (b) b.textContent = n ? `Promos (${n})` : 'Promos';
   }
 
   // Texto del encabezado plegado
@@ -1563,7 +1567,6 @@
   }
   $('guardarTV').onclick = () => guardar();
   $('barraBoton').onclick = () => guardar();
-  $('recargarTV').onclick = () => guardar(true);
   $('actualizarArriba').onclick = () => guardar(true);
 
   // Pestañas
@@ -1582,11 +1585,10 @@
       b.classList.add('activa');
       var panel = b.dataset.pest === 'foto' ? 'pestFoto'
                 : b.dataset.pest === 'drive' ? 'pestDrive'
-                : b.dataset.pest === 'sacoma' ? 'pestSacoma'
+                : b.dataset.pest === 'promos' ? 'pestPromos'
                 : b.dataset.pest === 'instructivo' ? 'pestInstructivo' : 'pestPantallas';
       $(panel).classList.add('activa');
       $('barraGuardar').style.display = (b.dataset.pest === 'foto' || b.dataset.pest === 'instructivo') ? 'none' : '';
-      if (b.dataset.pest === 'sacoma') $('barraGuardar').style.display = '';
     };
   });
 
